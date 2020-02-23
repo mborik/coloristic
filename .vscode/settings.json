@@ -1,0 +1,14 @@
+{
+	"editor.tabSize": 8,
+	"editor.insertSpaces": false,
+	"editor.colorDecorators": false,
+	"editor.rulers": [80],
+	"files.eol": "\n",
+
+	"files.associations": {
+		"*.{a80,inc}": "z80-macroasm"
+	},
+	"color-highlight.languages": [
+		"!z80-macroasm"
+	]
+}
