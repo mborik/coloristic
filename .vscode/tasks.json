@@ -2,40 +2,6 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "SjASMPlus",
-			"type": "shell",
-			"command": "sjasmplus",
-			"options": {
-				"cwd": "${fileDirname}"
-			},
-			"windows": {
-				"command": "sjasmplus.exe",
-				"options": {
-					"shell": {
-						"executable": "C:\\WINDOWS\\System32\\cmd.exe",
-						"args": [ "/d", "/c" ]
-					}
-				}
-			},
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			},
-			"isBackground": false,
-			"presentation": {
-				"echo": false,
-				"reveal": "silent",
-				"focus": false,
-				"panel": "shared"
-			},
-			"args": [
-				"--nologo",
-				"--lst=${fileBasenameNoExtension}.lst",
-				"${fileBasename}"
-			],
-			"problemMatcher": "$errmatcher-sjasmplus"
-		},
-		{
 			"label": "build",
 			"type": "shell",
 			"command": "bash compile.sh",
@@ -51,6 +17,10 @@
 					}
 				}
 			},
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
 			"isBackground": false,
 			"presentation": {
 				"echo": false,
@@ -58,7 +28,10 @@
 				"focus": false,
 				"panel": "dedicated"
 			},
-			"problemMatcher": "$errmatcher-sjasmplus"
+			"problemMatcher": {
+				"base": "$errmatcher-sjasmplus",
+				"fileLocation": [ "relative", "${workspaceRoot}/src" ]
+			}
 		}
 	]
 }

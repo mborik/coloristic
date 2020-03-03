@@ -1,22 +1,19 @@
 ;3x3+4.5+0.5	level grid
 
-		org	32768
+		org	#8000
 		ei
 
 C_BG_BRIGHT	equ	1
 C_BG_PAPER	equ	7
 C_BG_INK	equ	0
 
-LEVEL_CNT	equ	36
+LEVEL_CNT	equ	80
 
-check_im2
-		ld	a,7
+check_im2	ld	a,C_BG_PAPER
 		out	(254),a
 		call	prepare_info_screen
 		call	setup_im2
-main_start
-		call	play
-;		jp	c,congrat_screen
+main_start	call	play
 
 		ld	a,(level+1)
 		ld	(tmplevel+1),a
@@ -25,16 +22,14 @@ maxlevel	ld	a,0
 		ld	b,a
 		ld	a,(level+1)
 		cp	b
-		jr	c,+
+		jr	c,.max
 		ld	(maxlevel+1),a
-+
-		;b=current level c=maxlevel
-		ld	a,7*8+7
+.max		; b=currentlevel c=maxlevel
+		ld	a,C_BG_PAPER*8+C_BG_PAPER
 		call	cls
 
 		ld	e,0
--
-		push	de
+.loop		push	de
 
 		ld	a,e
 		ld	c,a	;store level
@@ -64,9 +59,8 @@ maxlevel	ld	a,0
 		inc	e
 		ld	a,e
 		cp	LEVEL_CNT
-		jr	c,-
-level_select
-		call	get_key
+		jr	c,.loop
+level_select	call	get_key
 		cp	' '
 		jr	z,level_continue
 		cp	13
@@ -89,16 +83,14 @@ level_select
 		inc	a
 		jr	level_set
 
-level_down
-		ld	a,(level+1)
+level_down	ld	a,(level+1)
 		or	a
 		jr	z,level_select
 		ld	e,a
 		dec	a
 		jr	level_set
 
-level_pgup
-		ld	a,(maxlevel+1)
+level_pgup	ld	a,(maxlevel+1)
 		ld	e,a
 		ld	a,(level+1)
 		add	a,5
@@ -109,16 +101,14 @@ level_pgup
 		add	a,6
 		jr	level_set
 
-level_pgdown
-		ld	a,(level+1)
+level_pgdown	ld	a,(level+1)
 		cp	6
 		jr	c,level_select
 		ld	e,a
 		sub	6
 		jr	level_set
 
-level_set
-		ld	(level+1),a
+level_set	ld	(level+1),a
 		call	highlight_level
 		ld	a,(level+1)
 		ld	e,a
@@ -126,8 +116,8 @@ level_set
 		call	key_delay
 		jr	level_select
 		ret
-level_play
-		ld	a,(tmplevel+1)
+
+level_play	ld	a,(tmplevel+1)
 		ld	e,a
 		ld	a,(level+1)
 		cp	e
@@ -139,29 +129,27 @@ level_continue
 		jp	z,main_start
 		ld	(level+1),a
 		jp	main_start
+
 calc_hl
 		ld	hl,255
--
-		sub	6
+.loop		sub	6
 		inc	l
-		jr	nc,-
+		jr	nc,.loop
 		add	a,6
 		ld	h,a
 		ret
 
 highlight_level
-
 		ld	a,(maxlevel+1)
 		cp	e
 		ld	d,5+7*8
-		jr	c,+
+		jr	c,.next
 		ld	a,(level+1)
 		cp	e
 		ld	d,2+7*8
-		jr	z,+
+		jr	z,.next
 		ld	d,0+7*8
-+
-		ld	a,e
+.next		ld	a,e
 		call	calc_hl
 
 		add	hl,hl
@@ -182,62 +170,51 @@ highlight_level
 		add	hl,bc
 		ld	bc,32-3
 
-		rept	3
-
-		rept	3
-
+	dup 3
+	  dup 3
 		ld	(hl),d
 		inc	hl
-
-		endm
-
+	  edup
 		ld	(hl),d
 		add	hl,bc
+	edup
 
-		endm
-
-		rept	3
-
+	dup 3
 		ld	(hl),d
 		inc	hl
-
-		endm
-
+	edup
 		ld	(hl),d
 		ret
-cls
-		ld	hl,16384
+
+cls		ld	hl,16384
 		ld	de,16385
 		ld	bc,6144
 		ld	(hl),l
 		ldir
-
 		ld	(hl),a
 		ld	bc,767
 		ldir
 		ret
 
-play
-		ld	a,7
+play		ld	a,C_BG_PAPER
 		out	(254),a
 
 		ld	a,C_BG_PAPER*8 + C_BG_INK
 		call	cls
 
 start_level
--
-		xor	a
+.wkey		xor	a
 		in	a,(254)
 		cpl
 		and	31
-		jr	nz,-
+		jr	nz,.wkey
 
 		halt
 		call	clear_area
 
 level		ld	a,0
 tmplevel	cp	255
-		jr	z,+
+		jr	z,.tmp
 
 		;load level and print it to the screen
 		call	prepare_level
@@ -245,21 +222,19 @@ tmplevel	cp	255
 
 		ld	hl,play_area
 		ld	de,undo_area
-		ld	bc,12*12*5
+		ld	bc,8*10*5
 		ldir
 
-		jr	+++
-+
-		call	highlight_area
+		jr	.legend
+.tmp		call	highlight_area
 
 		ld	a,255
 		ld	(tmplevel+1),a
 		ld	hl,play_area
 		ld	e,144
--
-		ld	a,(hl)
+.loop		ld	a,(hl)
 		or	a
-		jr	z,+
+		jr	z,.empty
 		push	de
 		ld	a,144
 		sub	e
@@ -267,23 +242,19 @@ tmplevel	cp	255
 
 		call	print_bigsprite
 		pop	de
-+
-		inc	hl
+.empty		inc	hl
 		dec	e
-		jr	nz,-
+		jr	nz,.loop
 
-+
-		call	print_legend
+.legend		call	print_legend
 		ld	de,0x461c
 
 		ld	c,12
--
-		xor	a
+.rowloop	xor	a
 		ld	b,4
--
-		ld	(de),a
+.colloop	ld	(de),a
 		inc	e
-		djnz	-
+		djnz	.colloop
 
 		ld	a,e
 		sub	4
@@ -291,7 +262,7 @@ tmplevel	cp	255
 		call	downde
 
 		dec	c
-		jr	nz,--
+		jr	nz,.rowloop
 
 		ld	a,(level+1)	;level
 		ld	hl,txt_nrlevel
@@ -344,9 +315,9 @@ mainloop
 		call	test_level_done
 		jp	nc,next_level	;level done
 
-		ld	hl,play_area+12*12*5-1
-		ld	de,undo_area+12*12*5-1
-		ld	bc,12*12*5
+		ld	hl,play_area+8*10*5-1
+		ld	de,undo_area+8*10*5-1
+		ld	bc,8*10*5
 		lddr
 mainloop_cont
 		call	key_delay
@@ -465,7 +436,7 @@ enter_level_code_set
 
 enterlevelcodetxt
 		db	"Enter code:",0
-tmpcode		db	"70A26C10",0
+tmpcode		db	"146011EB",0
 
 key_delay
 		ld	b,20
@@ -512,47 +483,43 @@ next_level
 		ld	hl,22528+4
 		ld	de,8
 		ld	c,24
--
-		ld	b,24
--
-		res	6,(hl)
+.rows		ld	b,24
+.cols		res	6,(hl)
 		inc	hl
-		djnz	-
+		djnz	.cols
 
 		add	hl,de
 		dec	c
-		jr	nz,--
+		jr	nz,.rows
 
 		ld	b,50
--
-		halt
-		djnz	-
+.waitsec	halt
+		djnz	.waitsec
 
 		ld	a,(level+1)
 		call	find_level_text
--
-		push	hl
+.mainloop	push	hl
 		call	fadeout
 
 		ld	a,0		;width
 		call	print_text_screen_centered
 
 		pop	hl
--
+.findnz
 		ld	a,(hl)
 		inc	hl
 		or	a
-		jr	nz,-
+		jr	nz,.findnz
 
 		ld	a,(hl)
 		or	a
-		jr	nz,+
+		jr	nz,.next
 
 		ld	a,(level+1)
 		inc	a
 		ld	(level+1),a
 		cp	LEVEL_CNT
-		jr	nc,+
+		jr	nc,.next
 
 		push	hl
 
@@ -571,20 +538,17 @@ next_level
 		call	print_text
 
 		pop	hl
-+
-
-		push	hl
+.next		push	hl
 
 		call	fadein
--
-		call	get_key
+.wkey		call	get_key
 		or	a
-		jr	z,-
+		jr	z,.wkey
 
 		pop	hl
 		ld	a,(hl)
 		or	a
-		jr	nz,---
+		jr	nz,.mainloop
 
 ;		jp	start_level
 		jp	play
@@ -598,212 +562,79 @@ game_end
 		jp	select_level2
 		ret
 
-fadeout
-		push	hl
+fadeout		push	hl
 		ld	d,7
--
-		halt
+.clrloop	halt
 		ld	hl,22528
 		ld	bc,768
--
-		ld	a,(hl)
+.scrloop	ld	a,(hl)
 		and	63
 		ld	e,a
-
 		and	7
 		cp	7
-		jr	z,+
+		jr	z,.ink
 		inc	e
-+
-		ld	a,e
+.ink		ld	a,e
 		and	56
 		cp	56
-		jr	z,+
+		jr	z,.paper
 		ld	a,e
 		add	a,8
 		ld	e,a
-+
-		ld	(hl),e
+.paper		ld	(hl),e
 		inc	hl
 		dec	bc
 		ld	a,b
 		or	c
-		jr	nz,-
+		jr	nz,.scrloop
 
 		dec	d
-		jr	nz,--
+		jr	nz,.clrloop
 
-		ld	a,7*8+7
+		ld	a,C_BG_PAPER*8+C_BG_PAPER
 		call	cls
-
 		pop	hl
 		ret
 
-fadein
-		push	hl
+fadein		push	hl
 		ld	d,7
--
-		halt
+.clrloop	halt
 		ld	hl,22528
 		ld	bc,768
--
-		ld	a,(hl)
+.scrloop	ld	a,(hl)
 		and	7
-		jr	z,+
+		jr	z,.max
 		dec	(hl)
-+
-		inc	hl
+.max		inc	hl
 		dec	bc
 		ld	a,b
 		or	c
-		jr	nz,-
+		jr	nz,.scrloop
 
 		dec	d
-		jr	nz,--
-
+		jr	nz,.clrloop
 		pop	hl
 		ret
 
-find_level_text
-		ld	hl,level_texts
-		;is that very first level? so hl is on the right place
-		or	a
-		ret	z
-
-		;skip B levels
-
-		ld	b,a
--
-		ld	a,(hl)	;check for end of all level texts
-		or	a
-		scf
-		ret	z
-
-		inc	hl
--
-		ld	a,(hl)
-		inc	hl
-		or	a
-		jr	nz,-
-
-		;hl is just after the zero char of first text of this level
-
-		;check if there are more texts for this level
-		ld	a,(hl)
-		inc	hl
-		or	a
-		jr	nz,-
-
-		djnz	--
-		ld	a,(hl)
-		cp	1	;if there are no texts for this level return with carry
-		ret
-
-
-undo
-		ld	hl,undo_area+12*12
-		ld	de,undo_area
-		ld	bc,12*12*4
-		ldir
-
-		ld	hl,play_area
-		ld	de,undo_area
-		ld	b,12
--
-		ld	c,12
--
-		ld	a,(de)
-		cp	(hl)
-		jr	z,+
-
-		ld	(hl),a
-		push	bc
-		push	hl
-		push	de
-
-		ld	a,12
-		sub	b
-		ld	b,a
-		ld	a,12
-		sub	c
-		ld	c,a
-
-		call	print_bigsprite
-		pop	de
-		pop	hl
-		pop	bc
-+
-		inc	hl
-		inc	de
-
-		dec	c
-		jr	nz,-
-
-		djnz	--
-
-		ret
-clear_area
-		ld	hl,16384+4
-		ld	de,8
-		ld	c,192+24
-		xor	a
--
-		ld	b,24
--
-		ld	a,c
-		cp	25
-		ld	a,C_BG_PAPER*8 + C_BG_INK
-		jr	c,+
-		xor	a
-+
-		ld	(hl),a
-		inc	hl
-		djnz	-
-
-		add	hl,de
-		dec	c
-		jr	nz,--
-		ret
-
-highlight_area
-		ld	hl,22528+4
-		ld	de,8
-		ld	c,24
--
-		ld	b,24
--
-		set	6,(hl)
-		inc	hl
-		djnz	-
-
-		add	hl,de
-		dec	c
-		jr	nz,--
-		ret
-
-get_key
-		ld	hl,keys
+get_key		ld	hl,keys
 		ld	bc,0x7ffe
 		ld	d,8
--
-		in	a,(c)
+.rows		in	a,(c)
 		rlca
 		rlca
 		rlca
 		ld	e,5
--
-		rlca
-		jr	nc,get_key_end
+.cols		rlca
+		jr	nc,.end
 		inc	hl
 		dec	e
-		jr	nz,-
+		jr	nz,.cols
 		rrc	b
 		dec	d
-		jr	nz,--
+		jr	nz,.rows
 		jr	get_key
 
-get_key_end
-		ld	a,(hl)
+.end		ld	a,(hl)
 		ret
 
 keys		db	"bnm",0," "
@@ -815,792 +646,17 @@ keys		db	"bnm",0," "
 		db	"gfdsa"
 		db	"vcxz",0
 
-test_level_done
-		ld	hl,play_area
-		ld	b,12*12
--
-		ld	a,(hl)
-		ld	e,a
-		and	7
-		jr	z,+
-		cp	7
-		jr	z,+
-		rlca
-		rlca
-		rlca
-		xor	e
-		and	56
-		jr	z,+
-		scf
+
+set_font	ld	(font),hl
 		ret
-+
-		inc	hl
-		djnz	-
-		or	a
-		ret
-
-locate_square
-		ld	hl,play_area
-		ld	b,12*12
-		rlca
-		rlca
-		rlca
-		ld	e,a
--
-		ld	a,(hl)
-		and	56
-		cp	e
-		ret	z
-		inc	hl
-		djnz	-
-		scf
-		ret
-
-calculate_new_position
-		ld	a,(store_direction)
-		or	a
-		jr	nz,move_no_up
-move_up
-		ld	a,b
-		or	a
-		scf
-		ret	z
-
-		dec	b
-		or	a
-		ret
-
-move_no_up
-		cp	64
-		jr	nz,move_no_down
-move_down
-		inc	b
-		ld	a,b
-		cp	12
-		ccf
-		ret
-
-move_no_down
-		cp	128
-		jr	nz,move_no_left
-move_left
-		ld	a,c
-		or	a
-		scf
-		ret	z
-
-		dec	c
-		or	a
-		ret
-
-move_no_left
-		cp	192
-		scf
-		ret	nz
-move_right
-		inc	c
-		ld	a,c
-		cp	12
-		ccf
-		ret
-
-store_direction	db	0
-
-perform_move
-		call	locate_square
-		ret	c
-		ld	a,(hl)
-		and	192
-		ld	(store_direction),a
-got_square
-		ld	e,(hl)	;old value
-		push	hl
-
-		ld	bc,play_area
-		or	a
-		sbc	hl,bc
-		ld	a,l
-
-		call	offset_to_bc
-
-		push	bc
-		push	de
-
-		call	calculate_new_position
-		jr	nc,move_common
-move_end
-		pop	de
-		pop	bc
-		pop	hl
-		ret
-
-move_common
-		call	bc_to_offset
-
-		push	bc
-		ld	l,a
-		ld	h,0
-		ld	bc,play_area
-		add	hl,bc
-
-		ld	a,(hl)
-
-		;test na skvare
-		and	56
-		jr	z,+
-		push	hl
-		call	got_square
-		pop	hl
-+
-		pop	bc
-		jr	c,move_end	;blocking square cannot be moved
-		ld	a,(hl)
-
-		pop	de	;restore de
-		push	de
-
-		ld	d,a
-		and	7
-		cp	7
-		jr	nz,+
-		ld	a,e
-		and	56
-		ld	e,a
-		ld	a,d
-		and	0xc7
-+
-		ld	d,a
-		ld	a,e
-		and	0xf8
-		or	d
-		ld	(hl),a
-
-		call	print_bigsprite
-
-		pop	de
-		pop	bc
-		pop	hl
-
-		ld	a,e
-		and	0xc7
-		ld	d,a
-		ld	a,e
-		and	7
-		cp	7
-		jr	z,+
-		ld	d,a	;new value
-+
-		ld	(hl),d
-		call	print_bigsprite
-
-		ret
-
-
-prepare_level
-		;clean play area
-		ld	hl,play_area
-		ld	de,play_area+1
-		ld	bc,12*12-1
-		ld	(hl),0
-		ldir
-
-		ld	hl,levels
-
-		or	a
-		jr	z,got_level
-
-		ld	b,a
-
-prepare_level_loop1
-		ld	a,(hl)
-		cp	255
-		ret	z
-
-prepare_level_loop2
-		inc	hl
-		inc	hl
-		ld	a,(hl)
-		cp	255
-		jr	nz,prepare_level_loop2
-
-		inc	hl
-		djnz	prepare_level_loop1
-
-got_level
-		ld	a,(hl)
-		cp	255
-		scf
-		ret	z
-
-		push	hl
-		call	highlight_area
-		pop	hl
-
-
-		ld	a,12
-		sub	(hl)
-		inc	hl
-		rrca
-		and	15
-		ld	c,a	;x offset
-
-		ld	a,12
-		sub	(hl)
-		inc	hl
-		rrca
-		and	15
-		ld	b,a	;y offset
-
-		call	bc_to_offset
-
-		ld	c,a
-		ld	b,0
-
-		ld	(scr_offset+1),a
-
-		ex	de,hl	;de=level data
-		ld	hl,play_area
-		add	hl,bc	;hl= screen offset
-		ld	b,h
-		ld	c,l
-
-prepare_level_loop3
-		;bc = screen offset, de = level data
-		ld	a,(de)
-		inc	de
-		cp	255
-		ret	z
-
-		ld	l,a
-		ld	h,0
-
-		add	hl,bc
-		ld	a,(de)
-		inc	de
-		ld	(hl),a
-
-		push	de
-		push	bc
-
-		dec	de
-		dec	de
-
-		ld	a,(de)
-scr_offset	add	a,0
-
-		call	offset_to_bc
-
-		call	print_bigsprite
-
-		pop	bc
-		pop	de
-
-		jr	prepare_level_loop3
-
-		or	a
-		ret
-
-offset_to_bc
-		;IN:  A=offset
-		;OUT: B=Y, C=X
-		ld	bc,0
-
-offset_to_bc_loop
-		inc	b
-		sub	12
-		jr	nc,offset_to_bc_loop
-
-		dec	b
-		add	a,12
-		ld	c,a
-		ret
-
-bc_to_offset
-		;IN:  B=Y, C=X
-		;OUT: A=offset
-		ld	a,b
-		add	a,b	;*2
-		add	a,b	;*3
-		add	a,a	;*6
-		add	a,a	;*12
-		add	a,c	;b*12+c
-		ret
-
-print_bigsprite
-		;IN:  B=Y, C=X
-
-		call	bc_to_offset
-		ld	e,a
-		ld	d,0
-		ld	hl,play_area
-		add	hl,de
-		ex	de,hl		;de= pointer to sprite in area
-
-		ld	a,(de)
-
-		push	bc		;store position
-		push	af		;store bigsprite
-		call	prepare_bigsprite
-		pop	af		;restore bigsprite
-		call	prepare_color
-		ld	(bigspritecolor),a
-		pop	bc		;restore position
-
-		;position is stored in B,C in 2x2 block grid
-
-		;X offset is ((32-12*2)/2) = ((32-24)/2) = (8/2) = 4
-		;Y offset is ((24-12*2)/2) = ((24-24)/2) = (0/2) = 0
-
-		ld	a,c
-		add	a,a
-		add	a,4		;add X offset
-		ld	l,a
-
-		ld	a,b
-		rrca
-		rrca
-		and	192
-		or	l
-		ld	l,a
-
-		ld	a,b
-		rlca
-		and	24
-		or	64
-		ld	h,a
-
-		push	hl
-
-		ld	de,bigspritecache
-		ld	b,2
-
-print_bigsprite_loop1
-		push	bc
-		ld	c,2
-
-print_bigsprite_loop2
-		ld	b,8
-
-print_bigsprite_loop3
-		ld	a,(de)
-		ld	(hl),a
-		inc	h
-		inc	de
-		djnz	print_bigsprite_loop3
-
-		ld	a,h
-		sub	8
-		ld	h,a
-
-		inc	hl
-		dec	c
-		jr	nz,print_bigsprite_loop2
-
-		ld	bc,30
-		add	hl,bc
-
-		pop	bc
-		djnz	print_bigsprite_loop1
-
-		pop	hl
-		ld	a,h
-		rrca
-		rrca
-		rrca
-		and	3
-		add	a,88
-		ld	h,a
-
-		ld	bc,31
-		ld	a,(bigspritecolor)
-		or	C_BG_BRIGHT*64
-		ld	(hl),a
-		inc	hl
-		ld	(hl),a
-		add	hl,bc
-		ld	(hl),a
-		inc	hl
-		ld	(hl),a
-		ret
-
-
-prepare_color
-		;a=sprite from area
-		;a= b7 b6 b5 b4 b3 b2 b1 b0
- 		;   b2 b1 b0 : color of target, special cases:
-		;              000 - no target here
-		;              111 - no target, but arrow here
-		;   b5 b4 b3 : color of square, special cases:
-		;              000 - no square here
-		;   b7 b6 : direction
-		;
-		; there are 6 types of sprites and their colours will be (ink/paper/direction):
-		; type 0: empty cell                      defink / defpaper / 0
-		; type 1: empty cell with square        defpaper / b5 b4 b3 / b7 b6
-		; type 2: arrow cell without square       defink / defpaper / b7 b6
-		; type 2: arrow cell with square        defpaper / b5 b4 b3 / b7 b6
-		; type 3: target without square         b2 b1 b0 / defpaper / 0
-		; type 4: target with different square  b2 b1 b0 / b5 b4 b3 / b7 b6
-		; type 5: target with matching square   defpaper / b5 b4 b3 / b7 b6
-
-		ld	e,a
-		and	56
-		jr	nz,+
-		ld	a,C_BG_PAPER*8
-+
-		ld	d,a		;color of square will be paper
-
-		ld	a,e
-		and	63
-		ld	a,C_BG_INK
-		jr	z,setink	;empty cell
-
-		ld	a,e
-		rrca
-		rrca
-		rrca
-		xor	e
-		and	7		;is the color of square and color of target same?
-
-		ld	a,C_BG_PAPER
-		jr	z,setink	;colors are same. a=0 so then ink = def paper
-
-		ld	a,e
-		and	7
-		cp	7		;is there arrow?
-		jr	nz,+
-
-;		ld	a,e
-;		and	56
-		ld	a,C_BG_INK
-;		jr	z,setink
-;		ld	a,C_BG_PAPER
-		jr	setink
-+
-		or	a
-		ld	a,C_BG_PAPER
-		jr	z,setink	;is it target? if not, ink = def ink
-
-		ld	a,e
-		and	7		;color of target will be ink
-setink
-		or	d
-		ld	d,a
-
-		ret
-
-prepare_bigsprite
-		;a=sprite from area
-
-		;clean bigsprite cache
-		ld	hl,bigspritecache
-		ld	de,bigspritecache+1
-		ld	bc,31
-		ld	(hl),0
-		ldir
-
-		;a=sprite from area
-		call	calc_bigsprite	;get order of bigsprite
-		or	a
-		ret	z	;empty bigsprite
-
-		cp	6
-		jr	c,+
-		cp	14
-		jr	nc,+
-		push	af
-		;bigsprites 6-9: or with sprite 1
-		;bigsprites 10-13: or with sprite 2
-		sub	6
-		and	4	;0/4
-		add	a,80	;half of the sprite 20 offset
-		add	a,a	;0/8
-		ld	l,a
-		ld	h,0
-		ld	de,sprites
-		add	hl,de
-		ld	de,bigspritecache+8
-		ld	bc,8
-		ldir
-		pop	af
-+
-		cp	2
-		jr	c,+
-		sub	2
-		and	3
-		add	a,2
-+
-		dec	a
-		add	a,a	;*2
-		add	a,a	;*4
-
-		;a= small sprite
-
-		ld	de,bigspritecache
-		ld	c,2
-
-prepare_bigsprite_loop1
-		ld	b,2
-
-prepare_bigsprite_loop2
-		push	hl
-		push	bc
-
-		push	af
-		add	a,a
-		add	a,a
-		add	a,a
-		ld	l,a
-		ld	h,0
-		ld	bc,sprites
-		add	hl,bc
-		ld	b,8
-
-prepare_bigsprite_loop3
-		ld	a,(de)
-		or	(hl)
-		ld	(de),a
-		inc	hl
-		inc	de
-		djnz	prepare_bigsprite_loop3
-
-		pop	af
-		inc	a
-
-		pop	bc
-		pop	hl
-
-		inc	hl
-
-		djnz	prepare_bigsprite_loop2
-
-		dec	c
-		jr	nz,prepare_bigsprite_loop1
-		ret
-
-calc_bigsprite
-		;a=sprite from area
-		;a= b7 b6 b5 b4 b3 b2 b1 b0
- 		;   b2 b1 b0 : color of target, special cases:
-		;              000 - no target here
-		;              111 - no target, but arrow here
-		;   b5 b4 b3 : color of square, special cases:
-		;              000 - no square here
-		;   b7 b6 : direction
-		;
-		; there are 6 types of sprites and their colours will be (ink/paper/direction):
-		; type 0: empty cell                           7 / 0        / 0
-		; type 1: empty cell with square               7 / b5 b4 b3 / b7 b6
-		; type 2: arrow cell without square            7 / 0        / b7 b6
-		; type 2: arrow cell with square               7 / b5 b4 b3 / b7 b6
-		; type 3: target without square         b2 b1 b0 / 0        / 0
-		; type 4: target with different square  b2 b1 b0 / b5 b4 b3 / b7 b6
-		; type 5: target with matching square          0 / b5 b4 b3 / b7 b6
-
-		;firstly we will calculate some intermediate state to easy calculations later
-		;state will be (attribute value will be calculated separately, so colors aren't
-		;interesting, we need just to know if they are same or different)
-		;
-		;a= b7 b6 b5 b4 b3 b2 b1 b0
-		;   b0 - is it square?
-		;   b1 - is it target?
-		;   b2 - is it arrow?
-		;   b3,b4 - direction
-		;   b5 - is the square and target of same color?
-
-		ld	e,a
-		ld	d,0
-		and	56	;check for square
-		jr	z,no_square1
-		inc	d	;d=1 : have square
-no_square1
-		ld	a,e
-		and	7	;check for target/arrow
-		or	a
-		jr	z,set_direction	;no target, no arrow
-		cp	7
-		jr	z,have_arrow1
-		set	1,d	;have target
-		jr	set_direction
-have_arrow1
-		set	2,d	;have arrow
-set_direction
-		ld	a,e
-		rrca
-		rrca
-		rrca
-		and	24	;direction
-		or	d
-		ld	d,a
-
-		ld	a,e
-		rrca
-		rrca
-		rrca
-		xor	e
-		and	7
-		jr	nz,no_samecolor1
-		set	5,d
-no_samecolor1
-		ld	a,d
-
-		;a= b7 b6 b5 b4 b3 b2 b1 b0
-		;   b0 - is it square?
-		;   b1 - is it target?
-		;   b2 - is it arrow?
-		;   b3,b4 - direction
-		;   b5 - is the square and target of same color?
-
-		ld	e,a
-		and	7
-		ret	z	;empty sprite (0)
-
-		bit	1,e
-		jr	z,not_target2
-have_target2
-		ld	a,1
-		bit	0,e
-		ret	z	;target only (1) [combination target+arrow is ignored]
-
-		;so here we have target and square
-		ld	a,e
-		rrca
-		rrca
-		rrca
-		and	7	;samecolor and direction mask
-		add	a,6
-		ret		;target+square with direction and corner (6,7,8,9, 10,11,12,14)
-
-not_target2
-		bit	2,e
-		jr	z,not_arrow2
-		ld	a,e
-		rrca
-		rrca
-		rrca
-		and	3
-		add	a,14
-		ret		;arrow or arrow+square with direction (14,15,16,17)
-
-not_arrow2	;no arrow and no target - just square
-		ld	a,e
-		rrca
-		rrca
-		rrca
-		and	3
-		add	a,2
-		ret		;square with direction (2,3,4,5)
-
-print_legend
-		ld	de,legend_str
-		ld	hl,16384
-		ld	b,9
-		call	print_legend_part
-
-		ld	hl,256*(64+1*8+C_BG_INK)+(64+C_BG_PAPER*8+C_BG_INk)
-		ld	(22528+33),hl
-		ld	h,64+2*8+C_BG_INK
-		ld	(22528+33+64),hl
-		ld	h,64+3*8+C_BG_INK
-		ld	(22528+33+128),hl
-		ld	h,64+4*8+C_BG_INK
-		ld	(22528+33+192),hl
-
-		ld	de,legend_str2
-		ld	hl,16384+4096+3*32
-		ld	b,5
-		call	print_legend_part
-
-		ld	hl,23296-256+2+4*32
-		ld	(hl),64+6*8+C_BG_INK
-		ld	l,2+6*32
-		ld	(hl),64+2*8+C_BG_INK
-
-		ld	de,legend_str3
-		ld	hl,16384+2048+28+7*32
-		ld	b,9
-		call	print_legend_part
-
-		ld	hl,23296-2-7*32
-		ld	(hl),64+5*8+C_BG_INK
-		ld	l,254-5*32
-		ld	(hl),64+3*8+C_BG_INK
-		ld	l,254-3*32
-		ld	(hl),64+4*8+C_BG_INK
-		ld	l,254-1*32
-		ld	(hl),64+6*8+C_BG_INK
-
-		ret
-
-print_legend_part
--
-		push	bc
-		ld	c,4
--
-		ld	a,(de)
-
-		push	de
-
-		push	hl
-		add	a,22	;legend sprites offset
-		ld	l,a
-		ld	h,0
-		ld	de,sprites
-		add	hl,hl
-		add	hl,hl
-		add	hl,hl
-		add	hl,de
-		ex	de,hl
-		pop	hl
-
-		ld	b,8
--
-		ld	a,(de)
-		ld	(hl),a
-		inc	de
-		inc	h
-		djnz	-
-
-		ld	a,h
-		sub	8
-		ld	h,a
-		inc	l
-
-		pop	de
-
-		inc	de
-		dec	c
-		jr	nz,--
-
-		ld	a,l
-		sub	4
-		add	a,32
-		ld	l,a
-		jr	nc,+
-
-		ld	a,h
-		add	a,8
-		ld	h,a
-+
-		pop	bc
-		djnz	---
-
-		ret
-
-set_font
-		ld	(font),hl
-		ret
-set_position
-		ld	a,b
+set_position	ld	a,b
 		ld	(ycoord),a
 		ld	a,c
 		ld	(xcoord),a
 		ret
 
-get_width
-		ld	de,0
--
-		ld	a,(hl)
+get_width	ld	de,0
+.loop		ld	a,(hl)
 		or	a
 		ret	z
 		cp	13
@@ -1610,18 +666,15 @@ get_width
 		ld	c,a
 		ld	b,0
 		push	hl
-
 		ld	hl,(font)
 		add	hl,bc
 		ld	l,(hl)
 		ld	h,0
 		add	hl,de
 		ex	de,hl
-
 		pop	hl
 		inc	hl
-		jr	-
-
+		jr	.loop
 
 print_text_screen_centered
 		push	af
@@ -1636,17 +689,16 @@ print_text_screen_centered
 
 		;calculate number of lines
 		ld	b,1
--
-		ld	a,(hl)
+.lines		ld	a,(hl)
 		or	a
-		jr	z,++
+		jr	z,.done
 		cp	13
-		jr	nz,+
+		jr	nz,.noent
 		inc	b
-+
+.noent
 		inc	hl
-		jr	-
-+
+		jr	.lines
+.done
 		;calculate top border from nr of lines: b=(192-12*L)/2
 		ld	a,b
 		add	a,b	;*2
@@ -1662,13 +714,10 @@ print_text_screen_centered
 
 		pop	hl
 		pop	af
-;		jr	print_text_centered
 
 print_text_centered
-
 		push	hl
--
-		push	af
+.loop		push	af
 		push	bc
 
 		push	hl
@@ -1676,54 +725,44 @@ print_text_centered
 		push	af
 
 		call	get_width
-
 		srl	e	;width of text /2
 
 		pop	af
 		or	a
-		jr	nz,+
+		jr	nz,.div
 		ld	a,128	;widht 0 means 256, so width/2 = 128
-		jr	++
-+
-		srl	a	;width of "window" /2
-+
-		pop	bc
+		jr	.nodiv
+.div		srl	a	;width of "window" /2
+.nodiv		pop	bc
 
 		add	a,c
 		sub	e
 		ld	c,a
 		call	set_position
-
 		pop	hl
 		push	hl
 		call	print_text
 		pop	hl
 
--
-		ld	a,(hl)
+.getline	ld	a,(hl)
 		inc	hl
 		or	a
-		jr	z,+
+		jr	z,.eol
 		cp	13
-		jr	nz,-
-
+		jr	nz,.getline
 		pop	bc
-
 		ld	a,12
 		add	a,b
 		ld	b,a
 		pop	af
+		jr	.loop
 
-		jr	--
-+
-
-		pop	bc
+.eol		pop	bc
 		pop	af
 		pop	hl
 		ret
 
-print_text
-		ld	a,(hl)
+print_text	ld	a,(hl)
 		or	a
 		ret	z
 		cp	13
@@ -1737,7 +776,7 @@ print_text
 		add	hl,de
 		ld	a,(xcoord)
 		add	a,(hl)
-		jr	nc,++
+		jr	nc,.print1
 
 		xor	a
 		ld	(xcoord),a
@@ -1745,18 +784,14 @@ print_text
 		ld	a,(ycoord)
 		add	a,12
 		cp	192
-		jr	c,+
+		jr	c,.sameln1
 		sub	192
-+
-		ld	(ycoord),a
-+
-		pop	hl
-
+.sameln1	ld	(ycoord),a
+.print1		pop	hl
 		push	hl
 		ld	a,(hl)
 		call	print_char
 		pop	hl
-
 		push	hl
 
 		ld	a,(hl)
@@ -1768,26 +803,21 @@ print_text
 		ld	a,(xcoord)
 		add	a,(hl)
 		ld	(xcoord),a
-		jr	nc,++
+		jr	nc,.print2
 
 		xor	a
 		ld	(xcoord),a
 		ld	a,(ycoord)
 		add	a,12
 		cp	192
-		jr	c,+
+		jr	c,.sameln2
 		sub	192
-+
-		ld	(ycoord),a
-+
-		pop	hl
-
+.sameln2	ld	(ycoord),a
+.print2		pop	hl
 		inc	hl
-
 		jr	print_text
 
-print_char
-		sub	32
+print_char	sub	32
 		ld	e,a
 		ld	d,0
 		ld	hl,(font)
@@ -1800,25 +830,22 @@ print_char
 
 		ld	bc,0xffff
 		ld	d,0xff
--
-		srl	b
+.rot1		srl	b
 		rr	c
 		rr	d
 		dec	a
-		jr	nz,-
-
+		jr	nz,.rot1
 		ld	a,(xcoord)
 		and	7
-		jr	z,+
--
-		scf
+		jr	z,.norot
+
+.rot2		scf
 		rr	b
 		rr	c
 		rr	d
 		dec	a
-		jr	nz,-
-+
-		ld	a,d
+		jr	nz,.rot2
+.norot		ld	a,d
 		ld	(fatfontfix+1),a
 		ld	d,0
 
@@ -1861,8 +888,7 @@ print_char
 		;we have screen address in de
 
 		ld	a,12
--
-		push	af
+print_loop	push	af
 		push	hl
 
 		ld	h,(hl)
@@ -1870,61 +896,47 @@ print_char
 
 		ld	a,(xcoord)
 		and	7
-		jr	z,+
--
-		srl	h
+		jr	z,.norot
+.rot		srl	h
 		rr	l
 		dec	a
-		jr	nz,-
-+
-		ld	a,(de)
+		jr	nz,.rot
+.norot		ld	a,(de)
 		and	b
 		or	h
 		ld	(de),a
-
 		inc	de
-
 		ld	a,(de)
 		and	c
 		or	l
 		ld	(de),a
-
 		inc	de
-
 		ld	a,(de)
 fatfontfix	and	0
 		ld	(de),a
-
 		dec	de
 		dec	de
-
 		call	downde
-
 		pop	hl
 		inc	hl
 		pop	af
 		dec	a
-		jr	nz,--
+		jr	nz,print_loop
 		ret
 
-downde
-		inc	d
+downde		inc	d
 		ld	a,d
 		and	7
 		ret	nz
 		ld	a,e
 		add	a,32
 		ld	e,a
-
 		ld	a,d
-
-		jr	c,+
-
+		jr	c,.chkovr
 		sub	8
 		ld	d,a
 		ret
-+
-		cp	88
+.chkovr		cp	88
 		ret	c
 		ld	d,64
 		ret
@@ -1938,47 +950,43 @@ encode_level_code
 		ld	h,0
 		ld	e,8
 		ld	bc,levelhash
--
-		ld	a,(hl)
+.loop1		ld	a,(hl)
 		and	15
 		ld	(bc),a
 		inc	hl
 		inc	bc
 		dec	e
-		jr	nz,-
+		jr	nz,.loop1
 
 		ld	hl,levelhashbits
 		ld	c,2
--
-		ld	e,d
+.loop2		ld	e,d
 		ld	b,6
--
-		ld	a,(hl)
+.loop3		ld	a,(hl)
 		and	7
-		ld	(levelsetreset+2),a	;calculate offset
+		ld	(.lvlsetres+2),a	;calculate offset
 
 		ld	a,(hl)
 		and	24		;calculate bit
 		rrc	e
-		jr	nc,+		;set/reset
+		jr	nc,.setres	;set/reset
 		or	64
-+
-		or	128+6
-		ld	(levelsetreset+3),a
+.setres		or	128+6
+		ld	(.lvlsetres+3),a
 
 		;1 V BBB 110
 		;res	n,(ix+m)	dd cb mm n*8+0x86
 		;set	n,(ix+m)	dd cb mm n*8+0xc6
-levelsetreset	set	0,(ix+0)	;bit and offset is calculated
+.lvlsetres	set	0,(ix+0)	;bit and offset is calculated
 		inc	hl
-		djnz	-
+		djnz	.loop3
 
 		ld	a,d
 		cpl
 		ld	d,a
 
 		dec	c
-		jr	nz,--
+		jr	nz,.loop2
 		ret
 
 decode_level_code
@@ -1986,34 +994,29 @@ decode_level_code
 		ld	e,0
 		ld	hl,levelhashbits
 		ld	c,2
--
-		ld	d,e
+.loop1		ld	d,e
 		ld	e,0
 		ld	b,6
--
-		ld	a,(hl)
+.loop2		ld	a,(hl)
 		and	7
-		ld	(levelbit+2),a	;calculate offset
+		ld	(.levelbit+2),a	;calculate offset
 
 		ld	a,(hl)
 		and	24		;calculate bit
 		or	64+6		;bit
-
-		ld	(levelbit+3),a
+		ld	(.levelbit+3),a
 
 		rrc	e
 		;01 BBB 110
 		;bit	n,(ix+m)	dd cb mm n*8+0x46
-levelbit	bit	0,(ix+0)
-
-		jr	z,+
+.levelbit	bit	0,(ix+0)
+		jr	z,.setres
 		set	5,e
-+
-		inc	hl
-		djnz	-
+.setres		inc	hl
+		djnz	.loop2
 
 		dec	c
-		jr	nz,--
+		jr	nz,.loop1
 		ld	a,e
 		cpl
 		and	63
@@ -2027,28 +1030,23 @@ translate_level_code
 		ld	hl,levelhash
 		ld	de,levelhashtext2
 		ld	b,8
--
-		ld	a,(hl)
+.loop		ld	a,(hl)
 		and	15
 		add	a,'0'
-
 		cp	'0'+10
-		jr	c,+
+		jr	c,.dec
 		add	a,'A'-'0'-10
-+
-		ld	(de),a
+.dec		ld	(de),a
 		inc	hl
 		inc	de
-		djnz	-
+		djnz	.loop
 		ret
-
 
 get_level_code
 		ld	hl,levelhashtmp
 		ld	de,levelhashtext2
 		ld	b,8
--
-		ld	a,(de)
+.loop		ld	a,(de)
 		cp	'0'
 		jr	c,get_level_code_err	; <0,'0')
 
@@ -2056,19 +1054,18 @@ get_level_code
 		jr	nc,get_level_code_err	; ('F',255>
 
 		cp	'9'+1
-		jr	c,+			; <'0','9'>
+		jr	c,.dec			; <'0','9'>
 
 		cp	'A'
 		jr	c,get_level_code_err	; ('9','A')
 
 						; <'A','F'>
 		sub	7
-+
-		sub	'0'
+.dec		sub	'0'
 		ld	(hl),a
 		inc	hl
 		inc	de
-		djnz	-
+		djnz	.loop
 
 		ld	hl,levelhashtmp
 		ld	de,levelhash
@@ -2107,7 +1104,7 @@ levelhashtext	db	"Code: "
 levelhashtext2	db	"        ",0
 
 prepare_info_screen
-		ld	a,7*8+7
+		ld	a,C_BG_PAPER*8+C_BG_PAPER
 		call	cls
 
 		xor	a
@@ -2137,25 +1134,23 @@ info_screen
 		ldir
 
 		call	fadein
--
-		call	get_key
+.wkey		call	get_key
 		or	a
-		jr	z,-
-
+		jr	z,.wkey
 		jp	play
 
-info_text	db	"GAME ABOUT SQUARES (ZX version)",13
+info_text	db	"COLORISTIC (ZX-Spectrum version)",13
 		db	13
-		db	"game idea, level design, texts*:",13
-		db	"Andrey Shevchuk",13
-		db	"(http://gameaboutsquares.com/)",13
+		db	"game idea & level design:",13
+		db	"Daniel Krautwurst",13
+		db	"(https://twitter.com/kraudi2k)",13
 		db	13
-		db	"graphics*, music, brainstorming:",13
+		db	"code, graphics, music:",13
 		db	"mborik",13
 		db	13
-		db	"font*: Proxima Software (Desktop)",13
+		db	"game engine: ub880d",13
 		db	13
-		db	"code: ub880d",13
+		db	"font*: Proxima Software (Desktop)",13
 		db	13
 		db	"betatesters: mikezt, ikon, rombor",13
 		db	13
@@ -2165,25 +1160,17 @@ info_text	db	"GAME ABOUT SQUARES (ZX version)",13
 xcoord		db	0
 ycoord		db	0
 
-mute_unmute
-		ld	a,(music_muted)
+mute_unmute	ld	a,(music_muted)
 		xor	1
 		ld	(music_muted),a
 		and	1
 		ret	z
-
-		call	music_mute
+		call	music_stop
 		ret
 
 music_muted	db	0
 
-setup_im2
-		di
-		;move music to final destination
-		ld	hl,music_end-1
-		ld	de,music_init + music_len - 1
-		ld	bc,music_len
-		lddr
+setup_im2	di
 
 		;prepare im2 table
 		ld	hl,0xbe00
@@ -2211,10 +1198,8 @@ setup_im2
 		;and enable interrupt
 		ei
 		ret
-im2_rut
-		di
 
-		push	ix
+im2_rut		push	ix
 		push	iy
 		push	hl
 		push	de
@@ -2229,12 +1214,11 @@ im2_rut
 
 		ld	a,(music_muted)
 		rrca
-		jr	c,+
+		jr	c,.muted
 
 		call	music_play
-+
 
-		pop	af
+.muted		pop	af
 		pop	bc
 		pop	de
 		pop	hl
@@ -2247,358 +1231,26 @@ im2_rut
 		pop	iy
 		pop	ix
 
-		jp	0x38
+		ei
 		ret
 
 
 font		dw	font1
 
-font1		binclude	"ladybird_mod.dfn"
-;font2		binclude	"moon_alert_mod.dfn"
-
-;font2		binclude	"desktop/academy,#E668,#8020.zx3"
-;font2		binclude	"desktop/belegost1,#E668,#8020.zx3"
-;font2		binclude	"desktop/belegost2,#ECCE,#8020.zx3"
-;font2		binclude	"desktop/bigbold,#C350,#8020.zx3"
-;font2		binclude	"desktop/cobra,#B43A,#806F.zx3"
-;font2		binclude	"desktop/cobrabold,#C350,#8062.zx3"
-;font2		binclude	"desktop/crash,#C350,#8020.zx3"
-;font2		binclude	"desktop/d#20o#20c,#ECCE,#8020.zx3"
-;font2		binclude	"desktop/digital,#ADD4,#8049.zx3"
-;font2		binclude	"desktop/extra,#E668,#805B.zx3"
-;font2		binclude	"desktop/fnt1,#ECCE,#8000.zx3"
-;font2		binclude	"desktop/fnt2,#F99A,#805E.zx3"
-;font2		binclude	"desktop/framebold,#ADD4,#804B.zx3"
-;font2		binclude	"desktop/hijack,#C350,#8020.zx3"
-;font2		binclude	"desktop/iron#20lord,#ADD4,#804B.zx3"
-;font2		binclude	"desktop/italika,#C350,#8020.zx3"
-;font2		binclude	"desktop/just6,#C350,#8020.zx3"
-;font2		binclude	"desktop/ladybird,#E668,#8000.zx3"
-;font2		binclude	"desktop/locomotion,#E668,#8020.zx3"
-;font2		binclude	"desktop/midnight,#F334,#8020.zx3"
-;font2		binclude	"desktop/moon#20alert,#E668,#8020.zx3"
-;font2		binclude	"desktop/myfnt,#ADD4,#8064.zx3"
-;font2		binclude	"desktop/nether,#C350,#8020.zx3"
-;font2		binclude	"desktop/neverend,#C350,#806E.zx3"
-;font2		binclude	"desktop/normal,#C350,#8020.zx3"
-;font2		binclude	"desktop/roman,#C350,#8020.zx3"
-;font2		binclude	"desktop/script2,#C350,#8020.zx3"
-;font2		binclude	"desktop/script,#C350,#8020.zx3"
-;font2		binclude	"desktop/shadebold,#F99A,#805B.zx3"
-;font2		binclude	"desktop/standard,#F99A,#8020.zx3"
-;font2		binclude	"desktop/t#20eclipse,#C350,#8069.zx3"
-;font2		binclude	"desktop/tasword,#F99A,#8090.zx3"
-;font2		binclude	"desktop/tm_bold,#F99A,#805B.zx3"
-;font2		binclude	"desktop/tm_italic,#F99A,#805B.zx3"
-;font2		binclude	"desktop/tm_normal,#F99A,#805B.zx3"
-;font2		binclude	"desktop/tomahawk,#E668,#8020.zx3"
-;font2		binclude	"desktop/ultrabold,#C350,#8062.zx3"
-;font2		binclude	"desktop/upcasebold,#C350,#8073.zx3"
-;font2		binclude	"desktop/wildwest,#C350,#8073.zx3"
-;font2		binclude	"desktop/winter,#C350,#8020.zx3"
+font1		incbin	"../gfx/ladybird.fnt"
 
 txt_nrlevel	db	0,0,0
 txt_level	db	"level",0
 
-;sprites offset
-legend_str	db	 0,  1,  1,  0
-		db	 3,  9,  8,  5
-		db	 4,  2,  2,  6
-		db	 3, 10,  8,  5
-		db	 4,  2,  2,  6
-		db	 3, 11,  8,  5
-		db	 4,  2,  2,  6
-		db	 3, 12,  8,  5
-		db	 4,  7,  7,  6
-
-legend_str2	db	13, 18, 15, 14
-		db	 3, 19, 20,  5
-		db	13, 21, 16, 14
-		db	 3, 22, 23,  5
-		db	 0, 17, 17,  0
-
-legend_str3
-		db	13, 24, 15, 14
-		db	 3, 25, 26,  5
-		db	13, 27, 16, 14
-		db	 3, 28, 29,  5
-		db	13, 30, 16, 14
-		db	 3, 31, 32,  5
-		db	13, 33, 16, 14
-		db	 3, 34, 35,  5
-		db	 0, 17, 17,  0
-
-
-;small sprites, these are standard 8x8 sprites as like UDG in zx basic, or font data
-;bigsprites are composed of these small sprites
-
-sprites
-;2x2 sprites
-		db	0,0,0,0,0,3,7,7		;sprite 0  target
-		db	0,0,0,0,0,192,224,224	;sprite 1  target
-		db	7,7,3,0,0,0,0,0		;sprite 2  target
-		db	224,224,192,0,0,0,0,0	;sprite 3  target
-
-		db	0,0,0,0,0,0,1,3		;sprite 4 arrow up
-		db	0,0,0,0,0,0,128,192	;sprite 5 arrow up
-		db	7,15,0,0,0,0,0,0	;sprite 6 arrow up
-		db	224,240,0,0,0,0,0,0	;sprite 7 arrow up
-
-		db	0,0,0,0,0,0,15,7	;sprite 8 arrow down
-		db	0,0,0,0,0,0,240,224	;sprite 9 arrow down
-		db	3,1,0,0,0,0,0,0		;sprite 10 arrow down
-		db	192,128,0,0,0,0,0,0	;sprite 11 arrow down
-
-		db	0,0,0,0,0,0,1,3		;sprite 12 arrow left
-		db	0,0,0,0,64,192,192,192	;sprite 13 arrow left
-		db	3,1,0,0,0,0,0,0		;sprite 14 arrow left
-		db	192,192,192,64,0,0,0,0	;sprite 15 arrow left
-
-		db	0,0,0,0,2,3,3,3		;sprite 16 arrow right
-		db	0,0,0,0,0,0,128,192	;sprite 17 arrow right
-		db	3,3,3,2,0,0,0,0		;sprite 18 arrow right
-		db	192,128,0,0,0,0,0,0	;sprite 19 arrow right
-
-;two special sprites for right-upper corner of target+square
-;sprites_corner
-		db	31,7,3,1,1,0,0,0	;sprite 20  target overlay 1 (different color)
-		db	24,4,2,1,1,0,0,0	;sprite 21  target overlay 2 (same color)
-
-;sprites_legend
-;
-;legend_str2	db	13, 18, 15, 14
-;		db	 3, 19, 20,  5
-;		db	13, 21, 16, 14
-;		db	 3, 22, 23,  5
-;		db	13, 24, 16, 14
-;		db	 3, 25, 26,  5
-;		db	13, 27, 16, 14
-;		db	 3, 28, 29,  5
-;		db	13, 30, 16, 14
-;		db	 3, 31, 32,  5
-;		db	 0, 17, 17,  0
-
-		db	0,0,0,0,0,0,0,0			;0
-		db	0,0,0,0,0,0,0,255		;1
-		db	255,255,255,255,255,0,0,255	;2
-		db	1,1,1,1,1,1,1,1			;3
-		db	1,1,1,1,0,0,0,0			;4
-		db	128,128,128,128,128,128,128,128	;5
-		db	128,128,128,128,0,0,0,0		;6
-		db	255,255,255,255,255,0,0,0	;7
-		db	255,131,131,131,131,131,255,255	;8	square on button
-
-		db	255,255,243,227,211,243,243,243	;9	"1" button
-		db	255,255,227,217,249,243,231,193	;10	"2"
-		db	255,255,227,217,243,249,217,227	;11	"3"
-		db	255,255,251,243,231,203,193,243	;12	"4"
-
-		db	0,0,0,0,1,1,1,1			;13
-		db	0,0,0,0,128,128,128,128		;14
-		db	0,0,0,255,255,255,255,255	;15
-		db	255,0,0,255,255,255,255,255	;16
-		db	255,0,0,0,0,0,0,0		;17
-
-		db	0,0,0,255,255,255,201,201	;18	"U" top
-		db	201,201,201,227,255,255,255,255	;19	"U" bottom
-		db	255,243,173,157,143,255,255,255	;20	"U" icon
-
-		db	255,0,0,255,255,255,195,201	;21	"R"
-		db	201,195,201,201,255,255,255,255	;22
-		db	197,185,255,157,163,255,255,255	;23
-
-		db	0,0,0,255,255,255,207,207	;27	"L"
-		db	207,207,207,193,255,255,255,255	;28
-		db	213,255,213,255,213,255,255,255	;26
-
-		db	255,0,0,255,255,255,227,205	;24	"C"
-		db	207,207,205,227,255,255,255,255	;25
-		db	255,207,177,181,207,255,255,255	;29
-
-		db	255,0,0,255,255,255,221,201	;29	"M"
-		db	193,201,201,201,255,255,255,255	;30
-		db	231,225,237,205,201,249,255,255	;31
-
-		db	255,0,0,255,255,255,225,243	;32	"I"
-		db	243,243,243,225,255,255,255,255	;33
-		db	247,255,231,247,227,255,255,255	;34
-
-bigspritecache	ds	32
-bigspritecolor	db	0
-
-;levels are stored this way:
-;
-; {level}{level}{level}...{level},255
-;   255 = end of level list
-;   {level} = definition of one level:
-;     x,y,(pos,sprite)*N,255
-;     x,y = dimensions of level, to calculate its position on screen (centered)
-;     pos = position of item, relative to calculated upper left corner
-;     sprite = play area byte - packed state of cell (contains all information about cell, if it is target, arrow, if there is square, colours, direction)
-;     255 = end level definition mark
-
-levels
-		db	1,3,24,2,0,80,255
-		db	1,4,12,1,24,2,0,72,36,16,255
-		db	4,3,2,2,1,1,0,208,13,4,15,160,25,8,255
-		db	5,6,36,2,62,1,2,72,28,144,255
-		db	4,4,13,2,12,200,14,96,26,4,39,1,1,80,255
-		db	4,4,13,2,12,200,14,96,26,1,39,4,1,80,255
-		db	5,4,0,4,3,80,13,1,16,136,38,2,26,32,255
-		db	3,3,24,199,26,7,2,1,0,72,255
-		db	4,3,24,231,26,7,2,1,3,4,0,72,255
-		db	4,2,15,135,12,215,14,15,1,2,2,1,255
-		db	5,5,26,199,24,4,25,2,27,1,28,136,2,80,50,32,255
-		db	5,5,2,71,0,208,4,136,25,2,26,1,27,4,50,32,255
-		db	4,4,1,71,15,135,13,4,25,1,24,200,38,32,255
-		db	4,6,13,103,48,2,1,4,25,1,39,144,62,8,255
-		db	3,3,0,2,2,3,1,96,13,1,12,216,14,144,26,4,25,8,255
-		db	4,3,0,87,3,135,12,199,13,2,25,1,26,8,255
-		db	4,3,0,215,2,71,14,143,12,2,15,1,25,7,255
-		db	4,3,0,87,3,143,12,231,13,2,14,4,15,1,26,7,255
-		db	4,3,0,103,3,143,12,215,13,2,14,4,15,1,26,7,255
-		db	4,7,2,2,26,1,50,4,51,135,49,79,36,87,62,39,61,199,72,199
-		db	75,7,255
-		db	3,5,0,103,2,159,1,1,24,207,26,23,25,3,48,7,12,4,14,2
-		db	255
-		db	3,5,2,159,0,79,50,39,48,215,24,7,26,4,36,71,38,3,14,2
-		db	12,1,255
-		db	5,5,24,215,1,79,2,2,49,7,40,135,16,96,255
-		db	5,5,24,231,16,151,2,71,1,72,50,7,37,2,38,1,39,4,255
-		db	4,6,0,2,13,1,26,4,24,87,39,135,37,79,50,39,49,199,60,199
-		db	63,7,255
-		db	4,4,0,2,1,1,2,4,12,79,15,135,36,231,38,23,255
-		db	4,4,1,95,2,3,24,207,27,4,15,167,12,1,38,23,37,2,255
-		db	5,5,24,215,16,143,3,71,1,96,51,7,37,2,38,1,39,4,255
-		db	5,5,24,215,1,79,49,7,40,135,12,1,16,96,255
-		db	5,5,2,79,28,167,27,1,25,3,24,208,50,31,14,2,38,4,255
-		db	4,4,0,103,3,135,1,4,36,215,38,15,24,2,12,1,255
-		db	5,5,13,231,27,151,24,1,26,2,28,4,2,79,50,7,255
-		db	5,5,24,215,1,79,2,2,49,7,40,135,12,1,16,96,255
-		db	5,4,0,1,1,2,2,4,13,79,16,135,37,231,39,23,255
-		db	4,3,0,103,3,143,12,215,14,2,26,7,25,4,27,1,255
-		db	5,5,1,71,2,1,3,2,4,4,36,199,51,7,50,200,48,224,49,208
-		db	16,135,255
-
-;levels_extra	;these are not shown on original game
-;		db	3,3,0,1,2,80,26,2,24,8,255
-;		db	3,3,0,2,2,96,12,1,14,136,26,4,24,16,255
-;		db	1,4,24,2,36,4,0,80,12,32,255
-;		db	4,3,1,199,3,87,15,135,14,2,12,1,26,15,255
-;		db	4,3,0,87,1,4,3,160,12,199,13,2,25,1,26,8,255
-;		db	5,2,0,95,3,143,4,135,1,2,2,1,12,231,15,23,16,7,13,4
-;		db	14,3,255
-
+levels		incbin	"../levels/levels.bin"
 		db	255	;end of level list
 
-level_texts
-		db	"Press a key!",0,0
-		db	"So, this is a game about",13,"squares. You can probably",13,"already tell",0,0
-		db	"Squares are what this game is about,",13,"for the most part",0,0
-		db	"Hence the title",0,0
-		db	"You see, this game is exactly about",13,"what it claims to be about",0,0
-		db	"Luckily, it's not exactly an AAA type",13,"of game, so I don't have to feed you",13,"empty promises",0,0
-		db	"Honesty is the best policy, right?",0,0
-		db	"I really don't want you to get",13,"the wrong impression of",13,"what's awaiting ahead",0,0
-		db	"So let's set you straight on that",0,0
-		db	"There will be no monsters to kill,",0
-		db	"no princess to save,",0
-		db	"no dungeons to crawl,",0
-		db	"no levels to up,",0
-		db	"no quests to complete,",0
-		db	"no horses to tame,",0
-		db	"and...",0,0
-		db	"And I can tell you with all my sincerity",13,"that nothing will ever jump on you from",13,"behind in this game",0,0
-		db	"But enough about the game,",13,"let's talk about you!",0,0
-		db	"So, who is your favorite character",13,"in the game, so far?",0,0
-		db	"Your progress will be saved",13,"after any level that you complete",0,0
-		db	"In fact, code is shown",13,"after each level",0
-		db	"and you can enter this code",13,"to restore progress",13,"next time you load the game",0,0
-		db	"Okay, no more hints.",13,"You're on your own now",0,0
-		db	"How far will you get?",0,0
-		db	"You may experience a slightest",13,"deja vu right now",0,0
-		db	"Sometimes I feel like cracking jokes",13,"between the levels wasn't such",13,"a good idea, after all",0,0
-		db	"Does this game feel tedious?",13,"Should we try something new?",0,0
-		db	"Nah, that's barely recognizable.",13,"We can do better!",0,0
-		db	"Now that was radical! Yeah...",13,"Let's just restore the status quo",0,0
-		db	"Do you think this game is hard?",0,0
-		db	"Some levels are surely",13,"harder than others",0,0
-		db	"You just keep on trying",13,"till you run out of cake",0,0
-		db	"You may well even finish the game",0
-		db	"This is so up to you",0,0
-		db	"Do you consider yourself",13,"a patient person?",0
-		db	"Just asking",0,0
-		db	"From time to time you might",13,"feel an impulse to quit",0
-		db	"You must resist it",0,0
-		db	"You know, you are supposed",13,"to be victorious",0
-		db	"remember of the purpose",0
-		db	"all the effort is not at all futile",0
-		db	"you're nothing like Don Quixote",13,"fighting a windmill",0,0
-		db	"You might want to look for some",13,"motivational quotes on the Internet",0,0
-		db	"Okay, I've got some for you",0
-		db	"Patience is bitter,",13,"but its fruit is sweet",13,13,"    - Aristotle",0
-		db	"He that can have patience",13,"can have what he will",13,13,"    - Benjamin Franklin",0
-		db	"A battle is won by the side that",13,"is absolutely determined to win",13,13,"    - Leo Tolstoy",0
-		db	"And I must say that the squares",13,"have no determination",13,"whatsoever, so it's not too",13,"much of a requirement to meet",0,0
-		db	"The last level is admittedly",13,"the best one",0
-		db	"Be sure to check it out",0,0
-		db	"Remember that guy who gave up?",0
-		db	"Neither does anyone else",0
-		db	"Not that you will be remembered",13,"for completing this game",0
-		db	"But, you know, at least",13,"something to brag about",0
-		db	"And if nobody understands why you are",13,"such a boaster, you know what to do",0
-		db	"I mean, drop them a link",13,"to this game, come on!",0,0
-		db	"Okay, you're almost there",0
-		db	"I wonder what was more tiring,",13,"the problems the levels presented,",13,"or my wannabe jokes between them",0,0
-		db	"I know, I know. The last one.",13,"I miss you already",0,0
-		db	"Wow, dude",0
-		db	"You've beaten them all!",0
-		db	"I have nothing left to test you.",13,"You've probably proven something.",13,"Congratulations!",0
-		db	"Don't forget the time we had together",0
-		db	"The memory of you will remain",13,"(at least in your mind)",0
-		db	"Nothing personal ;]",0
-		db	"So that's that. Good Bye",0
-		db	"Good bye, buddy,",13,"no more squares for you",0
-		db	"You're still pressing keys...",0
-		db	"Now I feel like I should have",13,"thought of something to say at parting",0
-		db	"But I haven't",0
-		db	"Seriously, no levels after this one",0
-		db	"Sorry about that",0
-		db	"Listen, I know these messages look",13,"pretty much like those that had levels",13,"after them, but this time it's different",0
-		db	"What are you expecting, anyway?",13,"Blizzard-style cinematic ending?",0
-		db	"Well, I'm kind of short of budget",13,"for that kind of thing",0
-		db	"I had to spend all the money",13,"to pay the script writer",0
-		db	"Okay, there was no script writer",0
-		db	"But that kind of compensates",13,"for the total lack of any kind",13,"of budget, so anyway...",0
-		db	"No levels. No cinematic. No ending.",13,"No hope. No nothing",0
-		db	"Just some letters in a seemingly",13,"random order",0
-		db	"like ,f!en--lk30fu)&02j,3 ; :-)",0
-		db	"Final levels weren't as tough as",13,"you were expecting, were they?",0
-		db	"That's all I managed to do within",13,"a self-imposed restriction of maximum",13,"of four squares on a level",0
-		db	"I didn't want to use more squares",13,"as that would only make levels more",13,"frustrating rather than interesting",0
-		db	"Btw, did you notice that the main",13,"promise of the game hasn't been kept?",0
-		db	"I told you it was all about squares,",13,"but it turned out to be all about hatred",0
-		db	"Hatred of a man toward",13,"certain geometrical figures",0
-		db	"Yep",0
-		db	"Seriously, why do you keep reading it?",0
-		db	"My jokes do not get",13,"any better further on",0
-		db	"Do you feel lonely?",0
-		db	"Do you have a dog?",0
-		db	"Do you know the distance",13,"Opportunity rover traveled on the",13,"surface of Mars?",0
-		db	"it's 39.41 km as of May 8, 2014",0
-		db	"Oh, move on with your life, already!",0,0
-;		db	0
-
+level_texts	db	"Well done!",0,0
 		db	0			;end of all level texts
 
-play_area	ds	12*12
-undo_area	ds	12*12*5
+play_area	ds	8*10
+undo_area	ds	8*10*5
 
-;!!! do not move this, music must be at the end!
-music		binclude	"squares_music.bin"
-music_end
-music_len	equ	music_end - music
-music_init	equ	0xc000
-music_play	equ	0xc005
-music_mute	equ	0xc008
-precalcscr	equ	music_init + music_len
+		include "music.a80"
+
+precalcscr
