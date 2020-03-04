@@ -88,9 +88,7 @@ tp_2:		ld	a,h
 		ld	(ChanB+CHP_OrnPtr),hl
 		ld	(ChanC+CHP_OrnPtr),hl
 
-		xor	a
-		ld	(p3x_globalvol+1),a
-		dec	a
+		ld	a,$ff
 		ld	(pl1d+1),a
 NoteTableMode:	ld	a,$3a
 		rla
@@ -630,16 +628,8 @@ ch_vol:		or	(ix+28)
 		ld	h,0
 		ld	de,VT_
 		add	hl,de
-		ld	e,(hl)
-p3x_globalvol:	ld	a,0		; GLOBAL ATTENUATION
-		cp	6		; ak je hodnota vacsia nez toto cislo
-		jr	c,ch_globvol	; prestan prehravat obalky!
-		set	0,c
-ch_globvol:	sub	e
-		jr	c,ch_env
-		xor	a
-ch_env:		neg
-		bit	0,c
+		ld	a,(hl)
+ch_env:		bit	0,c
 		jr	nz,ch_noen
 		or	(ix+20)
 ch_noen:	ld	(Ampl),a
@@ -706,13 +696,13 @@ AdInPtA:	ld	bc,$0101
 		jr	nz,pl1a
 		ld	d,a
 		ld	(ns_base),a
-CrPsPtr:	ld	hl,$2121
+CrPsPtr:	ld	hl,0
 		inc	hl
 		ld	a,(hl)
 		inc	a
 		jr	nz,plnlp
 		call	checklp
-LPosPtr:	ld	hl,$2121
+LPosPtr:	ld	hl,0
 		ld	a,(hl)
 		inc	a
 plnlp:		ld	(CrPsPtr+1),hl
@@ -720,7 +710,7 @@ plnlp:		ld	(CrPsPtr+1),hl
 		add	a,a
 		ld	e,a
 		rl	d
-PatsPtr:	ld	hl,$2121
+PatsPtr:	ld	hl,0
 		add	hl,de
 		ld	de,(modaddr+1)
 		ld	(psp_+1),sp
@@ -830,8 +820,10 @@ lout:		out	(c),a
 		out	(c),a
 		ret
 
-checklp:
-noloop:		set	7,(hl)
+checklp:	ld	hl,p3x_setup
+		set	7,(hl)
+		bit	0,(hl)
+		ret	z
 		pop	hl
 		ld	hl,DelyCnt
 		inc	(hl)
@@ -1013,10 +1005,8 @@ VAR0END		equ	T1_		; init zeroes from VARS to VAR0END-1
 
 
 ; bit.0 if you want to play without looping
-; bit.1 if you play looped but fadeout after few seconds
 ; bit.7 is set each time when loop is passed
-; ...or simplified:	2 - fadeout after loop
-;			1 - no loop
+; ...or simplified:	1 - no loop
 ;			0 - loop forever
 p3x_setup:	db	0
 

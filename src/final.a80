@@ -1,17 +1,20 @@
 		device	zxspectrum128
 
-		org	#8000
+		org	#6000
 
 start:		di
-		push	bc
-		ld	hl,mover+unpack.total-1
+		ld	hl,mover+(moverend-movereal)-1
 		ld	de,#FFFF
-		ld	bc,unpack.total
+		ld	bc,moverend-movereal
 		lddr
 		jp	unpack
 
 mover:
-		phase	#10000-unpack.total
+	phase	#FFFF & (#10000-(moverend-movereal))
+
+@movereal
+
+bufdat.packed:	incbin "coloristic.pak"
 
 unpack:		ld	hl,bufdat.packed
 		ld	de,#6000
@@ -39,9 +42,8 @@ spd	=	2
 
 		include "lzx.a80"
 
-bufdat.packed:	incbin "coloristic.pak"
-unpack.total = $-start
+@moverend = $
 
-		dephase
+	dephase
 
-		savebin "coloristic.bin",start,total
+		savebin "final.bin",start,$-start

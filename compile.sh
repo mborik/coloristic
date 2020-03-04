@@ -13,11 +13,12 @@ cd gfx
 LZX plan.scr plan.pak
 
 cd ../src
-${ASM} --lst=coloristic.lst coloristic.a80
+${ASM} --nologo --lst coloristic.a80
 LZX coloristic.bin coloristic.pak
-${ASM} final.a80
+${ASM} --nologo --lst --longptr final.a80
 
+cd ..
 rm -f ${OUTPUT}
-zmakebas -a 10 -o $OUTPUT -n COLORISTIC src/coloristic.bas
-bin2tap -a 32768 gfx/introscr.pak -append -o $OUTPUT
-bin2tap -a 32768 src/coloristic.bin -append -o $OUTPUT
+zmakebas -a 10 -o $OUTPUT -n COLORISTIC coloristic.bas
+bin2tap -a 32768 screen/introscr.pak -append -o $OUTPUT
+bin2tap -a 24576 src/final.bin -append -o $OUTPUT
