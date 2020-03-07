@@ -5,6 +5,7 @@
 
 @ENTRY
 levels		incbin	"../levels/levels.bin"
+gameplan	incbin	"../gfx/plan.pak"
 
 
 		org	#8000
@@ -71,17 +72,21 @@ maxlevel	ld	a,0
 		cp	LEVEL_CNT
 		jr	c,.loop
 level_select	call	get_key
-		cp	' '
+		cp	K_BREAK
 		jr	z,level_continue
-		cp	13
+		cp	K_EDIT
+		jr	z,level_continue
+		cp	K_SPACE
 		jr	z,level_play
-		sub	'5'
+		cp	K_ENTER
+		jr	z,level_play
+		cp	'o'
 		jr	z,level_down	;5
-		dec	a
+		cp	'a'
 		jr	z,level_pgup	;6
-		dec	a
+		cp	'q'
 		jr	z,level_pgdown	;7
-		dec	a
+		cp	'p'
 		jr	nz,level_select	;8
 ;level_up
 		ld	a,(maxlevel+1)
@@ -103,19 +108,19 @@ level_down	ld	a,(level+1)
 level_pgup	ld	a,(maxlevel+1)
 		ld	e,a
 		ld	a,(level+1)
-		add	a,5
+		add	a,7
 		cp	e
 		jr	nc,level_select
 		ld	a,(level+1)
 		ld	e,a
-		add	a,6
+		add	a,8
 		jr	level_set
 
 level_pgdown	ld	a,(level+1)
-		cp	6
+		cp	8
 		jr	c,level_select
 		ld	e,a
-		sub	6
+		sub	8
 		jr	level_set
 
 level_set	ld	(level+1),a
@@ -567,16 +572,24 @@ fadein		push	hl
 		ret
 
 get_key		ld	hl,keys
-		ld	bc,0x7ffe
-		ld	d,8
+		ld	bc,0xfefe
+		in	a,(c)
+		rra
+		jr	c,.test
+		ld	hl,keys.caps
+.test		ld	d,8
+		rrc	b
 .rows		in	a,(c)
 		rlca
 		rlca
 		rlca
 		ld	e,5
 .cols		rlca
-		jr	nc,.end
-		inc	hl
+		jr	c,.next
+		ld	a,(hl)
+		ret
+
+.next		inc	hl
 		dec	e
 		jr	nz,.cols
 		rrc	b
@@ -584,18 +597,7 @@ get_key		ld	hl,keys
 		jr	nz,.rows
 		jr	get_key
 
-.end		ld	a,(hl)
-		ret
-
-keys		db	"bnm",0," "
-		db	"hjkl",13
-		db	"yuiop"
-		db	"67890"
-		db	"54321"
-		db	"trewq"
-		db	"gfdsa"
-		db	"vcxz",0
-
+		include "keymap.inc"
 
 set_font	ld	(font),hl
 		ret
@@ -1216,10 +1218,11 @@ ycoord		db	0
 
 music_muted	db	0
 
-gameplan	incbin	"../gfx/plan.pak"
-
 font		dw	font1
 font1		incbin	"../gfx/ladybird.fnt"
+
+
+		include "sprites.inc"
 
 @TOTAL_LENGTH = $-ENTRY
 
