@@ -35,7 +35,7 @@ parser.parseString(tmx, (e, result) => {
 						value = (value - 16) | 64;
 					}
 					else if (value === 24) {
-						value = 3 | 64;
+						value = 65;
 					}
 
 					levelData.writeUInt8(value, offset);
