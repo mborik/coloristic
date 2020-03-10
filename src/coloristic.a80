@@ -62,7 +62,7 @@ maxlevel	ld	a,76
 		ld	c,0
 		add	hl,hl	;*16
 		add	hl,bc	;*24
-		ld	bc,0x2512
+		ld	bc,#2512
 		add	hl,bc
 
 		ld	b,l		;top
@@ -152,7 +152,7 @@ level_continue
 		ld	(level+1),a
 		jp	main_start
 
-calc_hl		ld	hl,#00ff
+calc_hl		ld	hl,#00FF
 .loop		sub	8
 		inc	l
 		jr	nc,.loop
@@ -177,7 +177,7 @@ highlight_level
 		ld	c,0
 		add	hl,hl	;*2
 		add	hl,bc
-		ld	bc,0x0400
+		ld	bc,#0400
 		add	hl,bc
 		ld	c,h
 		ld	b,0
@@ -213,7 +213,7 @@ cls		ld	hl,#4000
 		ld	(hl),l
 		ldir
 		ld	(hl),a
-		ld	bc,#2ff
+		ld	bc,#2FF
 		ldir
 		ret
 
@@ -244,13 +244,13 @@ tmplevel	cp	255
 ;		ld	de,undo_area
 ;		ld	bc,PLAYFIELD_SIZE*UNDO_LEVELS
 ;		ldir
-		jr	.legend
+		jr	.playground
 
 .tmp		ld	a,255
 		ld	(tmplevel+1),a
 		call	prepare_level.justdraw
 
-.legend		ld	a,(level+1)	;level
+.playground	ld	a,(level+1)	;level
 		ld	hl,txt_nrlevel
 		call	level2text
 
@@ -352,6 +352,13 @@ prepare_level	cp	255
 		ld	bc,PLAYFIELD_SIZE
 		ldir
 
+		ld	(redraw_bubbles.color00+1),bc
+		ld	(redraw_bubbles.color01+1),bc
+		ld	(redraw_bubbles.color10+1),bc
+		ld	(redraw_bubbles.color11+1),bc
+		ld	a,#CC ; call z
+		ld	(.firsttime),a
+
 .justdraw	ld	de,#4008
 		ld	ix,playground
 		ld	c,10
@@ -360,8 +367,11 @@ prepare_level	cp	255
 .cols		ld	a,(ix+0)
 		or	a
 		jr	z,.next
+		and	#FC
+		cp	4
 		push	bc
-		ld	l,a
+.firsttime	call	z,.startile
+		ld	l,(ix+0)
 		ld	h,0
 		add	hl,hl
 		add	hl,hl
@@ -399,7 +409,7 @@ prepare_level	cp	255
 		or	a
 		call	z,draw_shade_corner
 		and	2+16+128
-		cp	16 ; wrapper left|up
+		cp	16 ; wrapper right|down
 		call	z,draw_shade_corner
 .wrapper	pop	bc
 .next		inc	ix
@@ -410,7 +420,32 @@ prepare_level	cp	255
 		call	down2ch
 		dec	c
 		jr	nz,.rows
+		call	redraw_bubbles
+		inc	a
+		ld	(.firsttime),a
 		scf
+		ret
+
+.startile	ld	a,(ix+0)
+		and	3
+		ld	l,a
+		ld	h,0
+		ld	c,a
+		ld	b,h
+		add	hl,hl
+		add	hl,hl
+		add	hl,hl
+		add	hl,bc
+		ld	bc,redraw_bubbles.color00+1
+		add	hl,bc
+		ld	(hl),e
+		inc	hl
+		ld	(hl),d
+		add	a,low playground.current_location
+		ld	h,a
+		ld	l,high playground.current_location
+		ld	a,xl
+		ld	(hl),a
 		ret
 
 draw_base_sprite
@@ -715,6 +750,66 @@ draw_shade_corner
 		pop	de
 		ret
 
+redraw_bubbles	ld	a,(playground.steps+0)
+.color00	ld	bc,0
+		call	.drawbubble
+		ld	a,(playground.steps+1)
+.color01	ld	bc,0
+		call	.drawbubble
+		ld	a,(playground.steps+2)
+.color10	ld	bc,0
+		call	.drawbubble
+		ld	a,(playground.steps+3)
+.color11	ld	bc,0
+.drawbubble	bit	6,b
+		ret	z
+		and	31
+		inc	a
+		rlca
+		rlca
+		ld	l,a
+		ld	h,0
+		add	hl,hl
+		add	hl,hl
+		add	hl,hl
+		ld	de,spr_num_mask
+		add	hl,de
+		ld	a,16
+.loop		ex	af,af'
+		ex	hl,de
+		ld	a,(bc)
+		and	(hl)
+		inc	hl
+		ex	hl,de
+		or	(hl)
+		inc	hl
+		ld	(bc),a
+		inc	c
+		ex	hl,de
+		ld	a,(bc)
+		and	(hl)
+		inc	hl
+		ex	hl,de
+		or	(hl)
+		inc	hl
+		ld	(bc),a
+		dec	c
+		inc	b
+		ld	a,b
+		and	7
+		jr	nz,.next
+		ld	a,c
+		add	a,32
+		ld	c,a
+		jr	c,.next
+		ld	a,b
+		sub	8
+		ld	b,a
+.next		ex	af,af'
+		dec	a
+		jr	nz,.loop
+		ret
+
 ;;-----------------------------------------------------------------------------
 
 entercode	call	key_delay
@@ -978,7 +1073,7 @@ fadein		push	hl
 		ret
 
 get_key		ld	hl,keys
-		ld	bc,0xfefe
+		ld	bc,#fefe
 		in	a,(c)
 		rra
 		jr	c,.test
@@ -1186,8 +1281,8 @@ print_char	sub	32
 		or	a
 		ret	z	;zero width???
 
-		ld	bc,0xffff
-		ld	d,0xff
+		ld	bc,#ffff
+		ld	d,#ff
 .rot1		srl	b
 		rr	c
 		rr	d
@@ -1230,11 +1325,11 @@ print_char	sub	32
 		ld	d,a
 		rlca
 		rlca
-		and	0xe0
+		and	#e0
 		or	e
 		ld	e,a
 		ld	a,d
-		and	0xc7
+		and	#c7
 		ld	d,a
 		rrca
 		rrca
@@ -1342,8 +1437,8 @@ encode_level_code
 		ld	(.lvlsetres+3),a
 
 		;1 V BBB 110
-		;res	n,(ix+m)	dd cb mm n*8+0x86
-		;set	n,(ix+m)	dd cb mm n*8+0xc6
+		;res	n,(ix+m)	dd cb mm n*8+#86
+		;set	n,(ix+m)	dd cb mm n*8+#c6
 .lvlsetres	set	0,(ix+0)	;bit and offset is calculated
 		inc	hl
 		djnz	.loop3
@@ -1375,7 +1470,7 @@ decode_level_code
 
 		rrc	e
 		;01 BBB 110
-		;bit	n,(ix+m)	dd cb mm n*8+0x46
+		;bit	n,(ix+m)	dd cb mm n*8+#46
 .levelbit	bit	0,(ix+0)
 		jr	z,.setres
 		set	5,e
@@ -1511,20 +1606,22 @@ mute_unmute	ld	a,(music_muted)
 setup_im2	di
 
 		;prepare im2 table
-		ld	hl,0xbe00
-		ld	de,0xbe01
-		ld	bc,0x0100
-		ld	(hl),0xbf
+		ld	hl,#FE00
+		ld	de,#FE01
+		ld	bc,#0100
+		ld	(hl),#FF
 		ldir
 
 		;prepare jump to im2 routine
-		ld	a,0xc3	;jp
+		ld	a,#C3	;jp
 		ld	hl,im2_rut
-		ld	(0xbfbf),a
-		ld	(0xbfc0),hl
+		ld	(#FFF4),a
+		ld	(#FFF5),hl
+		ld	a,#18	;jr
+		ld	(#FFFF),a
 
 		;setup I reg
-		ld	a,0xbe
+		ld	a,#FE
 		ld	i,a
 
 		;and switch to im2
@@ -1673,10 +1770,11 @@ font1		incbin	"../gfx/ladybird.fnt"
 @TOTAL_LENGTH = $-ENTRY
 
 playground	ds	PLAYFIELD_SIZE
+.current_location = $ - 8
 .steps = $ - 4
 undo_area	ds	PLAYFIELD_SIZE * UNDO_LEVELS
 
-precalcscr = #E800
+precalcscr = #E000
 
 
 		savebin "coloristic.bin",ENTRY,TOTAL_LENGTH
