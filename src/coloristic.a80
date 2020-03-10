@@ -18,7 +18,7 @@ C_BG_ATTR	equ	C_BG_PAPER*8+C_BG_PAPER
 PLAYFIELD_W	equ	8
 PLAYFIELD_H	equ	10
 STEP_COUNT_SIZE	equ	4
-PLAYFIELD_SIZE	equ	STEP_COUNT_SIZE+(PLAYFIELD_W*PLAYFIELD_H)
+PLAYFIELD_SIZE	equ	96
 
 UNDO_LEVELS	equ	5
 LEVEL_CNT	equ	80
@@ -240,14 +240,15 @@ tmplevel	cp	255
 		call	prepare_level
 		jp	nc,game_end
 
-		ld	hl,play_area
-		ld	de,undo_area
-		ld	bc,PLAYFIELD_SIZE*UNDO_LEVELS
-		ldir
+;		ld	hl,playground
+;		ld	de,undo_area
+;		ld	bc,PLAYFIELD_SIZE*UNDO_LEVELS
+;		ldir
 		jr	.legend
 
 .tmp		ld	a,255
 		ld	(tmplevel+1),a
+		call	prepare_level.justdraw
 
 .legend		ld	a,(level+1)	;level
 		ld	hl,txt_nrlevel
@@ -289,19 +290,29 @@ mainloop	call	get_key
 		cp	'5'
 		jr	nc,mainloop_cont
 
-		sub	48
+		sub	'1'
+		ld	(active_color),a
+		ld	a,#38
+		ld	hl,#5821
+		ld	de,#40
+		ld	(hl),a
+		add	hl,de
+		ld	(hl),a
+		add	hl,de
+		ld	(hl),a
+		add	hl,de
+		ld	(hl),a
 
-		scf
+;		scf
 ;		call	perform_move
-		jr	c,mainloop_cont	;cannot move
-
+;		jr	c,mainloop_cont	;cannot move
 ;		call	test_level_done
-		jp	nc,next_level	;level done
+;		jp	nc,next_level	;level done
+;		ld	hl,playground+PLAYFIELD_SIZE*UNDO_LEVELS-1
+;		ld	de,undo_area+PLAYFIELD_SIZE*UNDO_LEVELS-1
+;		ld	bc,PLAYFIELD_SIZE*UNDO_LEVELS
+;		lddr
 
-		ld	hl,play_area+PLAYFIELD_SIZE*UNDO_LEVELS-1
-		ld	de,undo_area+PLAYFIELD_SIZE*UNDO_LEVELS-1
-		ld	bc,PLAYFIELD_SIZE*UNDO_LEVELS
-		lddr
 mainloop_cont
 		call	key_delay
 		jr	mainloop
@@ -337,12 +348,12 @@ prepare_level	cp	255
 		add	hl,de
 		ld	de,levels
 		add	hl,de
-		ld	de,play_area
+		ld	de,playground
 		ld	bc,PLAYFIELD_SIZE
 		ldir
 
-		ld	de,#4048
-		ld	ix,play_area
+.justdraw	ld	de,#4008
+		ld	ix,playground
 		ld	c,10
 .rows		ld	b,8
 		push	de
@@ -369,11 +380,10 @@ prepare_level	cp	255
 		call	draw_sprite
 		pop	de
 		ld	a,(ix+0)
-		bit	7,a
-		jr	nz,.testcorns
-		bit	4,a
-		jr	nz,.wrapper
-.testcorns	ld	a,(ix+1)
+		and	16+128
+		cp	16 ; wrapper
+		jr	z,.wrapper
+		ld	a,(ix+1)
 		or	a
 		call	z,draw_shade_right
 		and	16+128
@@ -387,6 +397,9 @@ prepare_level	cp	255
 		call	z,draw_shade_bottom
 		ld	a,(ix+9)
 		or	a
+		call	z,draw_shade_corner
+		and	2+16+128
+		cp	16 ; wrapper left|up
 		call	z,draw_shade_corner
 .wrapper	pop	bc
 .next		inc	ix
@@ -507,7 +520,144 @@ draw_path_switch
 .attr		ld	c,0
 		jr	draw_base_sprite.finish
 
-draw_wrap	ret
+draw_wrap	srl	c
+		jr	nc,.noleft
+		ld	hl,spr_wrap.L
+		inc	e
+		ld	c,2
+.wrapL_loop1	ld	b,7
+.wrapL_loop2	ld	a,(hl)
+		ld	(de),a
+		inc	hl
+		inc	d
+		djnz	.wrapL_loop2
+		ld	a,(hl)
+		ld	(de),a
+		inc	hl
+		call	downde
+		dec	c
+		jr	nz,.wrapL_loop1
+		ld	a,(de)
+		or	(hl)
+		ld	(de),a
+		ret
+
+.noleft		srl	c
+		jr	nc,.noup
+		ld	hl,spr_wrap.U
+		ld	c,2
+		ld	a,32
+		add	a,e
+		ld	e,a
+		jr	nc,.wrapU_loop1
+		ld	a,8
+		add	a,d
+		ld	d,a
+.wrapU_loop1	push	de
+		ld	b,7
+.wrapU_loop2	ld	a,(hl)
+		ld	(de),a
+		inc	hl
+		inc	d
+		djnz	.wrapU_loop2
+		ld	a,(hl)
+		ld	(de),a
+		inc	hl
+		pop	de
+		inc	e
+		dec	c
+		jr	nz,.wrapU_loop1
+		ld	b,8
+.wrapU_loop3	ld	a,(de)
+		or	(hl)
+		ld	(de),a
+		inc	hl
+		inc	d
+		djnz	.wrapU_loop3
+		ret
+
+.noup		srl	c
+		jr	nc,.noright
+		ld	hl,spr_wrap.R
+		ld	c,2
+		push	de
+.wrapR_loop1	ld	b,7
+.wrapR_loop2	ld	a,(hl)
+		ld	(de),a
+		inc	hl
+		inc	d
+		djnz	.wrapR_loop2
+		ld	a,(hl)
+		ld	(de),a
+		inc	hl
+		call	downde
+		dec	c
+		jr	nz,.wrapR_loop1
+		ld	a,(de)
+		or	(hl)
+		ld	(de),a
+		inc	hl
+		pop	de
+		inc	e
+		ld	c,2
+.wrapR_loop3	ld	b,7
+.wrapR_loop4	ld	a,(de)
+		or	(hl)
+		ld	(de),a
+		inc	hl
+		inc	d
+		djnz	.wrapR_loop4
+		ld	a,(de)
+		or	(hl)
+		ld	(de),a
+		inc	hl
+		call	downde
+		dec	c
+		jr	nz,.wrapR_loop3
+		ld	a,(de)
+		or	(hl)
+		ld	(de),a
+		ret
+
+.noright	srl	c
+		ret	nc
+		ld	hl,spr_wrap.D
+		ld	c,2
+.wrapD_loop1	push	de
+		ld	b,7
+.wrapD_loop2	ld	a,(hl)
+		ld	(de),a
+		inc	hl
+		inc	d
+		djnz	.wrapD_loop2
+		ld	a,(hl)
+		ld	(de),a
+		inc	hl
+		call	downde
+		ld	a,(de)
+		or	(hl)
+		ld	(de),a
+		inc	hl
+		pop	de
+		inc	e
+		dec	c
+		jr	nz,.wrapD_loop1
+		ld	b,7
+.wrapD_loop3	ld	a,(de)
+		or	(hl)
+		ld	(de),a
+		inc	hl
+		inc	d
+		djnz	.wrapD_loop3
+		ld	a,(de)
+		or	(hl)
+		ld	(de),a
+		inc	hl
+		call	downde
+		ld	a,(de)
+		or	(hl)
+		ld	(de),a
+		ret
 
 draw_shade_right
 		push	de
@@ -761,7 +911,7 @@ next_level	ld	a,255
 		or	a
 		jr	nz,.mainloop
 
-;		jp	start_level
+		jp	start_level
 		jp	play
 game_end
 		ld	a,(level+1)
@@ -1400,7 +1550,32 @@ im2_rut		push	ix
 		push	bc
 		push	af
 
-		ld	a,(music_muted)
+.counter	ld	a,0
+		inc	a
+		cp	34
+		jr	nz,.setc
+		xor	a
+.setc		ld	(.counter+1),a
+		ld	c,#38
+		ld	hl,#5822
+		and	#F0
+		jr	z,.isplanshown
+		set	6,c
+.isplanshown	ld	a,(hl)
+		cp	#70
+		jr	nz,.testmute
+		dec	hl
+		ex	hl,de
+		xor	a
+		ld	h,a
+		ld	a,(active_color)
+		rrca
+		rrca
+		ld	l,a
+		add	hl,de
+		ld	(hl),c
+
+.testmute	ld	a,(music_muted)
 		rrca
 		jr	c,.muted
 		call	music_play
@@ -1481,6 +1656,8 @@ info_text	db	"COLORISTIC",13
 xcoord		db	0
 ycoord		db	0
 
+active_color	db	0
+
 music_muted	db	0
 
 ;;-----------------------------------------------------------------------------
@@ -1495,8 +1672,8 @@ font1		incbin	"../gfx/ladybird.fnt"
 
 @TOTAL_LENGTH = $-ENTRY
 
-play_area	ds	PLAYFIELD_SIZE - STEP_COUNT_SIZE
-step_counts	ds	STEP_COUNT_SIZE
+playground	ds	PLAYFIELD_SIZE
+.steps = $ - 4
 undo_area	ds	PLAYFIELD_SIZE * UNDO_LEVELS
 
 precalcscr = #E800

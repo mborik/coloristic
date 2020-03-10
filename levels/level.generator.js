@@ -40,6 +40,8 @@ parser.parseString(tmx, (e, result) => {
 
 					levelData.writeUInt8(value, offset);
 				}
+
+				offset = levelData.length - props.length;
 				for (const prop of props) {
 					levelData.writeUInt8(parseInt(prop.value) || 0, offset++);
 				}
