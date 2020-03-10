@@ -36,7 +36,7 @@ main_start	call	play
 		ld	a,(level+1)
 		ld	(tmplevel+1),a
 select_level2
-maxlevel	ld	a,76
+maxlevel	ld	a,79
 		ld	b,a
 		ld	a,(level+1)
 		cp	b
@@ -79,7 +79,7 @@ maxlevel	ld	a,76
 		ld	a,e
 		cp	LEVEL_CNT
 		jr	c,.loop
-level_select	call	get_key
+level_select	call	get_controls
 		cp	K_BREAK
 		jr	z,level_continue
 		cp	K_EDIT
@@ -88,16 +88,16 @@ level_select	call	get_key
 		jr	z,level_play
 		cp	K_ENTER
 		jr	z,level_play
-		cp	'o'
-		jr	z,level_down	;5
-		cp	'a'
-		jr	z,level_pgup	;6
-		cp	'q'
-		jr	z,level_pgdown	;7
-		cp	'p'
-		jr	nz,level_select	;8
-;level_up
-		ld	a,(maxlevel+1)
+		cp	K_LEFT
+		jr	z,level_down
+		cp	K_DOWN
+		jr	z,level_pgup
+		cp	K_UP
+		jr	z,level_pgdown
+		cp	K_RIGHT
+		jr	nz,level_select
+
+level_up	ld	a,(maxlevel+1)
 		ld	e,a
 		ld	a,(level+1)
 		cp	e
@@ -146,8 +146,7 @@ level_play	ld	a,(tmplevel+1)
 		cp	e
 		jp	nz,main_start
 
-level_continue
-		ld	a,(tmplevel+1)
+level_continue	ld	a,(tmplevel+1)
 		cp	255
 		jp	z,main_start
 		ld	(level+1),a
@@ -267,7 +266,7 @@ tmplevel	cp	255
 		ld	hl,txt_level
 		call	print_text_centered
 
-mainloop	call	get_key
+mainloop	call	get_controls
 		cp	'c'		;level code
 		jp	z,entercode
 
@@ -1099,6 +1098,9 @@ fadein		push	hl
 		pop	hl
 		ret
 
+get_controls	ld	hl,ctrldefs
+		jr	get_key+3
+
 get_key		ld	hl,keys
 		ld	bc,#fefe
 		in	a,(c)
@@ -1633,22 +1635,20 @@ mute_unmute	ld	a,(music_muted)
 setup_im2	di
 
 		;prepare im2 table
-		ld	hl,#FE00
-		ld	de,#FE01
-		ld	bc,#0100
-		ld	(hl),#FF
+		ld	hl,im2_vector
+		ld	de,im2_vector+1
+		ld	bc,256
+		ld	(hl),high im2_target
 		ldir
 
 		;prepare jump to im2 routine
 		ld	a,#C3	;jp
 		ld	hl,im2_rut
-		ld	(#FFF4),a
-		ld	(#FFF5),hl
-		ld	a,#18	;jr
-		ld	(#FFFF),a
+		ld	(im2_target),a
+		ld	(im2_target+1),hl
 
 		;setup I reg
-		ld	a,#FE
+		ld	a,high im2_vector
 		ld	i,a
 
 		;and switch to im2
@@ -1774,7 +1774,7 @@ info_text	db	"COLORISTIC",13
 		db	"user interface engine: ub880d",13
 		db	"font: Proxima Software & ub880d",13
 		db	13
-		db	"betatesters: ub880d, rombor, ikon",13
+		db	"betatest: ub880d, rombor, solaris104",13
 		db	0
 
 xcoord		db	0
@@ -1797,11 +1797,18 @@ font1		incbin	"../gfx/ladybird.fnt"
 @TOTAL_LENGTH = $-ENTRY
 
 playground	ds	PLAYFIELD_SIZE
-.current_location = $ - 8
 .steps = $ - 4
+.current_location = $ - 8
+
 undo_area	ds	PLAYFIELD_SIZE * UNDO_LEVELS
 
-precalcscr = #E000
+		align	256
+
+im2_vector
+im2_target = 256 * (high $ + 1) + (high $ + 1)
+
+
+precalcscr = #E800
 
 
 		savebin "coloristic.bin",ENTRY,TOTAL_LENGTH

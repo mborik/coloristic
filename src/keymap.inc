@@ -15,6 +15,15 @@ K_GRAPH	= #F
 K_BREAK	= #1B
 K_SPACE	= #20
 
+ctrldefs	db	"bnm",K_SYMB,K_SPACE
+		db	"hjkl",K_ENTER
+		db	"yui",K_LEFT,K_RIGHT
+		db	K_DOWN,K_UP,K_RIGHT,"90"
+		db	K_LEFT,"4321"
+		db	"trew",K_UP
+		db	"gfds",K_DOWN
+		db	"vcxz",0
+
 keys		db	"bnm",K_SYMB,K_SPACE
 		db	"hjkl",K_ENTER
 		db	"yuiop"
