@@ -19,6 +19,7 @@ PLAYFIELD_W	equ	8
 PLAYFIELD_H	equ	10
 STEP_COUNT_SIZE	equ	4
 PLAYFIELD_SIZE	equ	96
+COLOR_KEYS_PTR	equ	#5822
 
 UNDO_LEVELS	equ	5
 LEVEL_CNT	equ	80
@@ -291,17 +292,19 @@ mainloop	call	get_key
 		jr	nc,mainloop_cont
 
 		sub	'1'
+		push	af
+		add	a,low playground.steps
+		ld	l,a
+		ld	h,high playground.steps
+		ld	a,(hl)
+		or	a
+		jr	nz,.setact
+		pop	af
+		jr	mainloop_cont
+
+.setact		pop	af
 		ld	(active_color),a
-		ld	a,#38
-		ld	hl,#5821
-		ld	de,#40
-		ld	(hl),a
-		add	hl,de
-		ld	(hl),a
-		add	hl,de
-		ld	(hl),a
-		add	hl,de
-		ld	(hl),a
+		call	reset_color_keys
 
 ;		scf
 ;		call	perform_move
@@ -423,6 +426,17 @@ prepare_level	cp	255
 		call	redraw_bubbles
 		inc	a
 		ld	(.firsttime),a
+		dec	a
+		ld	bc,#0303
+		ld	hl,playground.steps
+.findintrocolor	or	(hl)
+		inc	hl
+		jr	nz,.setintrocolor
+		djnz	.findintrocolor
+.setintrocolor	ld	a,c
+		xor	b
+		ld	(active_color),a
+		call	reset_color_keys
 		scf
 		ret
 
@@ -808,6 +822,19 @@ redraw_bubbles	ld	a,(playground.steps+0)
 .next		ex	af,af'
 		dec	a
 		jr	nz,.loop
+		ret
+
+reset_color_keys
+		ld	a,#38
+		ld	hl,COLOR_KEYS_PTR-1
+		ld	de,#40
+		ld	(hl),a
+		add	hl,de
+		ld	(hl),a
+		add	hl,de
+		ld	(hl),a
+		add	hl,de
+		ld	(hl),a
 		ret
 
 ;;-----------------------------------------------------------------------------
@@ -1654,7 +1681,7 @@ im2_rut		push	ix
 		xor	a
 .setc		ld	(.counter+1),a
 		ld	c,#38
-		ld	hl,#5822
+		ld	hl,COLOR_KEYS_PTR
 		and	#F0
 		jr	z,.isplanshown
 		set	6,c
