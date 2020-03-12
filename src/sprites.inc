@@ -6,30 +6,36 @@ D:		ds 32
 	ends
 
 	macro s2fn fn?, sprite?, attr?
+	opt push listoff
 		db	fn?
 		db	attr?
 		dw	sprite?
+	opt pop
 	endm
 
 	macro sgap cnt?
+	opt push listoff
 	dup cnt?
 		dd	TILE_NOP
 	edup
+	opt pop
 	endm
 
 	macro s2path tile?, color?
-		s2fn	tile?, spr_path_H, color?
-		s2fn	tile?, spr_path_V, color?
+	opt push listoff
+		s2fn	tile?, spr_path_H, color?	; 128
+		s2fn	tile?, spr_path_V, color?	; 129
 		sgap 2
-		s2fn	tile?, spr_path_point.L, color?
-		s2fn	tile?, spr_path_point.U, color?
-		s2fn	tile?, spr_path_point.R, color?
-		s2fn	tile?, spr_path_point.D, color?
-		s2fn	tile?, spr_path_corn.L, color?
-		s2fn	tile?, spr_path_corn.U, color?
-		s2fn	tile?, spr_path_corn.R, color?
-		s2fn	tile?, spr_path_corn.D, color?
+		s2fn	tile?, spr_path_point.L, color?	; 132
+		s2fn	tile?, spr_path_point.U, color?	; 133
+		s2fn	tile?, spr_path_point.R, color?	; 134
+		s2fn	tile?, spr_path_point.D, color?	; 135
+		s2fn	tile?, spr_path_corn.L, color?	; 136
+		s2fn	tile?, spr_path_corn.U, color?	; 137
+		s2fn	tile?, spr_path_corn.R, color?	; 138
+		s2fn	tile?, spr_path_corn.D, color?	; 139
 		sgap 4
+	opt pop
 	endm
 
 ;;-----------------------------------------------------------------------------
@@ -40,6 +46,12 @@ TILE_WRAP	= 4
 TILE_PATHSW	= 6
 TILE_NOP	= 8
 
+DIRECTION_LEFT	= %00
+DIRECTION_UP	= %01
+DIRECTION_RIGHT	= %10
+DIRECTION_DOWN	= %11
+
+; assumed aligned to 256
 sprite2fntab:	dd	TILE_NOP			; 000
 		s2fn	TILE_BASE, spr_base, 0q170	; 001
 		s2fn	TILE_BASE, spr_switch, 0q170	; 002
@@ -82,6 +94,24 @@ sprite2fntab:	dd	TILE_NOP			; 000
 		s2path	TILE_PATHSW, 0q120		; 208 ... 223
 		s2path	TILE_PATHSW, 0q150		; 224 ... 239
 		s2path	TILE_PATHSW, 0q140		; 240 ... 255
+
+; assumed aligned to 256
+dir2tile:	db	0	; x  = right 10 + left  00
+		db	139	; ┘  = right 10 + up    01
+		db	128	; ─  = right 10 + right 10
+		db	137	; ┐  = right 10 + down  11
+		db	139	; ┘  = down  11 + left  00
+		db	0	; x  = down  11 + up    01
+		db	136	; └  = down  11 + right 10
+		db	129	; │  = down  11 + down  11
+		db	128	; ─  = left  00 + left  00
+		db	136	; └  = left  00 + up    01
+		db	0	; x  = left  00 + right 10
+		db	138	; ┌  = left  00 + down  11
+		db	137	; ┐  = up    01 + left  00
+		db	129	; │  = up    01 + up    01
+		db	138	; ┌  = up    01 + right 10
+		db	0	; x  = up    01 + down  11
 
 
 shade_right:	incbin "../gfx/shade_right.spr"

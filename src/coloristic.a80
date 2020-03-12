@@ -267,6 +267,7 @@ tmplevel	cp	255
 		call	print_text_centered
 
 mainloop	call	get_controls
+
 		cp	'c'		;level code
 		jp	z,entercode
 
@@ -284,6 +285,11 @@ mainloop	call	get_controls
 
 		cp	'r'		;reload
 		jp	z,start_level
+
+		cp	K_LEFT
+		jr	c,mainloop_cont
+		cp	K_UP + 1
+		jp	c,perform_move
 
 		cp	'1'
 		jr	c,mainloop_cont
@@ -305,30 +311,31 @@ mainloop	call	get_controls
 		ld	(active_color),a
 		call	reset_color_keys
 
-;		scf
-;		call	perform_move
-;		jr	c,mainloop_cont	;cannot move
-;		call	test_level_done
-;		jp	nc,next_level	;level done
-;		ld	hl,playground+PLAYFIELD_SIZE*UNDO_LEVELS-1
-;		ld	de,undo_area+PLAYFIELD_SIZE*UNDO_LEVELS-1
-;		ld	bc,PLAYFIELD_SIZE*UNDO_LEVELS
-;		lddr
-
-mainloop_cont
-		call	key_delay
+mainloop_cont	call	key_delay
 		jr	mainloop
-manage_music
-		call	mute_unmute
+
+manage_music	call	mute_unmute
 		jr	mainloop_cont
-perform_undo
-		call	undo
+
+perform_undo	call	undo
 		jr	mainloop_cont
 
 undo		ld	hl,undo_area+PLAYFIELD_SIZE
 		ld	de,undo_area
 		ld	bc,PLAYFIELD_SIZE*UNDO_LEVELS-1
 		ldir
+		ret
+
+store_undo	push	hl
+		push	de
+		push	bc
+		ld	hl,playground+PLAYFIELD_SIZE*UNDO_LEVELS-1
+		ld	de,undo_area+PLAYFIELD_SIZE*UNDO_LEVELS-1
+		ld	bc,PLAYFIELD_SIZE*UNDO_LEVELS
+		lddr
+		pop	bc
+		pop	de
+		pop	hl
 		ret
 
 prepare_level	cp	255
@@ -455,12 +462,218 @@ prepare_level	cp	255
 		inc	hl
 		ld	(hl),d
 		add	a,low playground.current_location
-		ld	h,a
-		ld	l,high playground.current_location
+		ld	l,a
+		ld	h,high playground.current_location
 		ld	a,xl
 		ld	(hl),a
 		ret
 
+perform_move	rlca
+		add	a,low ctrl2direction
+		ld	h,high ctrl2direction
+		ld	l,a
+		jr	nc,.getdir
+		inc	h
+.getdir		ld	d,(hl)
+		inc	hl
+		ld	a,(hl)
+		ld	(.whatatdir+2),a
+		ld	(.wraponedge+1),a
+		ld	e,a
+		neg
+		ld	(.wrapfind+1),a
+
+		ld	a,(active_color)
+		ld	c,a
+		add	a,low playground.steps
+		ld	l,a
+		ld	h,high playground.current_location
+		ex	af,af'
+		ld	a,(hl)	; check remaining steps
+		or	a
+		jr	z,.forbidden
+		ex	af,af'
+		sub	(playground.steps - playground.current_location)
+		ld	l,a
+		ld	a,(hl)
+		ld	xl,a
+		ld	xh,high playground
+		add	a,e
+		ld	l,a
+;		ld	h,high playground
+		ld	b,(ix+0)
+.whatatdir	ld	e,(ix+0)
+
+; ix = position, b = tile at current position,
+; c = color, d = direction, e = tile at following position
+
+		xor	a	; is void?
+		or	e
+		jr	z,.forbidden
+		ld	a,#C0	; is filled or blocked?
+		and	e
+		jr	nz,.forbidden
+		ld	a,#0C
+		and	e
+		jr	z,.testwrap
+		cp	4	; is another start tile?
+		jr	z,.forbidden
+		cp	8	; is color tick?
+		jr	z,.colortick
+		cp	12	; is arrow?
+		jr	z,.dirarrow
+.testwrap	bit	4,e
+		jr	nz,.wrapper
+		bit	5,e
+		jr	nz,.powerup
+		ld	a,e
+		dec	a
+		jr	z,.domove
+		dec	a
+		call	z,.switch
+
+.domove		ld	a,c
+		rlca
+		rlca
+		rlca
+		rlca
+		ld	e,a	; e = color << 4
+		bit	7,b
+		jr	z,.firstmove
+		ld	a,b	; last tile dir
+		and	3
+		rlca
+		rlca
+		or	d	; plus current dir
+		push	hl
+		ld	h,high dir2tile
+		ld	l,a
+		ld	a,(hl)	; get target path-tile
+		pop	hl
+		or	e	; add color << 4
+.finish		ld	(ix+0),a
+		ld	a,#86	; mirrored target tile
+		xor	d
+		or	e	; color << 4
+		ld	(hl),a
+		ld	e,l
+		call	findpos_drawsprite
+		ld	a,xl
+		ld	l,a
+		call	findpos_drawsprite
+		ld	a,c
+		add	a,low playground.current_location
+		ld	l,a
+;		ld	h,high playground.current_location
+		ld	(hl),e	; update location
+		add	a,(playground.steps - playground.current_location)
+		ld	l,a
+		dec	(hl)	; update steps
+		call	redraw_bubbles
+.forbidden	call	key_delay
+		jp	mainloop
+
+.firstmove	call	store_undo
+		ld	a,#84
+		or	d
+		or	e	; color << 4
+		jr	.finish
+
+.colortick	ld	a,e	; follow-tile
+		and	3
+		cp	c	; color
+		jr	nz,.forbidden
+		jr	.domove
+
+.dirarrow	ld	a,e	; follow-tile
+		and	3
+		cp	d	; direction
+		jr	nz,.forbidden
+		jr	.domove
+
+.wrapper	ld	a,e	; follow-tile
+		and	3
+		cp	d	; direction
+		jr	nz,.forbidden
+.wrapfind	ld	a,0	; find mirror edge
+		add	a,l
+		ld	l,a
+		ld	a,(hl)
+		or	a
+		jr	nz,.wrapfind
+.wraponedge	ld	a,0
+		add	a,l
+		ld	l,a
+		jr	.domove
+
+.powerup	push	hl
+		ld	a,c	; color
+		add	a,low playground.steps
+		ld	l,a
+		ld	h,high playground.steps
+		ld	a,e	; follow-tile
+		and	7
+		add	a,(hl)	; add to steps
+		ld	(hl),a
+		pop	hl
+		jr	.domove
+
+.switch		push	hl
+		push	bc
+		ld	b,PLAYFIELD_SIZE
+		ld	hl,playground
+.switchloop	ld	a,(hl)
+		and	#C0
+		cp	#40	; blocked tile
+		jr	z,.switchnext
+		res	6,(hl)
+.switchnext	inc	l
+		djnz	.switchloop
+		pop	bc
+		pop	hl
+		ret
+
+findpos_drawsprite
+		push	hl
+		push	de
+		push	bc
+		ld	de,#4008
+		ld	a,l
+		jr	.findpostart
+
+.findposloop1	ex	af,af'
+		call	down2ch
+		ex	af,af'
+.findpostart	sub	8
+		jr	nc,.findposloop1
+		add	a,8
+.findposloop2	inc	e
+		inc	e
+		dec	a
+		jr	nz,.findposloop2
+
+		ld	l,(hl)
+		ld	h,a
+		add	hl,hl
+		add	hl,hl
+		ld	bc,sprite2fntab
+		add	hl,bc
+		ld	a,(hl)
+		ld	(draw_sprite+1),a
+		inc	l
+		ld	c,(hl)
+		inc	l
+		ld	a,(hl)
+		inc	l
+		ld	h,(hl)
+		ld	l,a
+		call	draw_sprite
+		pop	bc
+		pop	de
+		pop	hl
+		ret
+
+;;-----------------------------------------------------------------------------
 draw_base_sprite
 		push	de
 		ld	b,2
@@ -1099,7 +1312,12 @@ fadein		push	hl
 		ret
 
 get_controls	ld	hl,ctrldefs
-		jr	get_key+3
+		ld	bc,#fefe
+		in	a,(c)
+		rra
+		jr	c,get_key.test
+		ld	hl,keys.caps
+		jr	get_key.test
 
 get_key		ld	hl,keys
 		ld	bc,#fefe
@@ -1107,8 +1325,9 @@ get_key		ld	hl,keys
 		rra
 		jr	c,.test
 		ld	hl,keys.caps
-.test		ld	d,8
-		rrc	b
+.test		rrc	b
+.loop		push	hl
+		ld	d,8
 .rows		in	a,(c)
 		rlca
 		rlca
@@ -1117,6 +1336,7 @@ get_key		ld	hl,keys
 .cols		rlca
 		jr	c,.next
 		ld	a,(hl)
+		pop	hl
 		ret
 
 .next		inc	hl
@@ -1125,7 +1345,8 @@ get_key		ld	hl,keys
 		rrc	b
 		dec	d
 		jr	nz,.rows
-		jr	get_key
+		pop	hl
+		jr	.loop
 
 		include "keymap.inc"
 
@@ -1721,6 +1942,7 @@ im2_rut		push	ix
 		ret
 
 
+		opt push listoff
 ;;-----------------------------------------------------------------------------
 ;; Setting for depacker according to compression identification -tXYoAoB
 
@@ -1745,10 +1967,18 @@ unpack:		include "lzx.a80"
 		include "music.a80"
 
 ;;-----------------------------------------------------------------------------
+		opt pop
+
+
+ctrl2direction	= $ - (K_LEFT * 2)
+		db	DIRECTION_LEFT, -1
+		db	DIRECTION_RIGHT, 1
+		db	DIRECTION_DOWN, 8
+		db	DIRECTION_UP, -8
 
 enterlevelcodetxt
 		db	"Enter code:",0
-tmpcode		db	"146011EB",0
+tmpcode		db	"00000000",0
 
 levelhashtmp	db	"00000000"
 levelhash	db	"00000000",0
@@ -1786,15 +2016,16 @@ music_muted	db	0
 
 ;;-----------------------------------------------------------------------------
 
+		align	256
+
+sprites		include "sprites.inc"
+
 font		dw	font1
 font1		incbin	"../gfx/ladybird.fnt"
 
+@TOTAL_LENGTH = $-ENTRY
 
 		align	256
-
-		include "sprites.inc"
-
-@TOTAL_LENGTH = $-ENTRY
 
 playground	ds	PLAYFIELD_SIZE
 .steps = $ - 4
@@ -1813,4 +2044,3 @@ precalcscr = #E800
 
 		savebin "coloristic.bin",ENTRY,TOTAL_LENGTH
 		savesna "../coloristic.sna",start
-1
