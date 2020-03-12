@@ -18,7 +18,7 @@ K_SPACE	= #20
 ctrldefs	db	"bnm",K_SYMB,K_SPACE
 		db	"hjkl",K_ENTER
 		db	"yui",K_LEFT,K_RIGHT
-		db	K_LEFT,K_RIGHT,K_DOWN,K_UP,"0" ; Sinclair II joystick
+		db	"67890"
 		db	"54321"
 		db	"trew",K_UP
 		db	"gfds",K_DOWN

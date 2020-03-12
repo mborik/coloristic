@@ -510,7 +510,7 @@ perform_move	rlca
 		xor	a	; is void?
 		or	e
 		jr	z,.forbidden
-		ld	a,#C0	; is filled or blocked?
+.restartwrap	ld	a,#C0	; is filled or blocked?
 		and	e
 		jr	nz,.forbidden
 		ld	a,#0C
@@ -527,12 +527,15 @@ perform_move	rlca
 		bit	5,e
 		jr	nz,.powerup
 		ld	a,e
+		dec	a	; is base tile?
+		jr	z,.makemove
 		dec	a
-		jr	z,.domove
-		dec	a
+		dec	a	; is blocker?
+		jr	z,.forbidden
+		inc	a	; is switch?
 		call	z,.switch
 
-.domove		ld	a,c
+.makemove	ld	a,c
 		rlca
 		rlca
 		rlca
@@ -556,20 +559,7 @@ perform_move	rlca
 		xor	d
 		or	e	; color << 4
 		ld	(hl),a
-		ld	e,l
-		call	findpos_drawsprite
-		ld	a,xl
-		ld	l,a
-		call	findpos_drawsprite
-		ld	a,c
-		add	a,low playground.current_location
-		ld	l,a
-;		ld	h,high playground.current_location
-		ld	(hl),e	; update location
-		add	a,(playground.steps - playground.current_location)
-		ld	l,a
-		dec	(hl)	; update steps
-		call	redraw_bubbles
+		call	finish_move
 .forbidden	call	key_delay
 		jp	mainloop
 
@@ -583,13 +573,13 @@ perform_move	rlca
 		and	3
 		cp	c	; color
 		jr	nz,.forbidden
-		jr	.domove
+		jr	.makemove
 
 .dirarrow	ld	a,e	; follow-tile
 		and	3
 		cp	d	; direction
 		jr	nz,.forbidden
-		jr	.domove
+		jr	.makemove
 
 .wrapper	ld	a,e	; follow-tile
 		and	3
@@ -604,7 +594,8 @@ perform_move	rlca
 .wraponedge	ld	a,0
 		add	a,l
 		ld	l,a
-		jr	.domove
+		ld	e,(hl)
+		jr	.restartwrap
 
 .powerup	push	hl
 		ld	a,c	; color
@@ -616,22 +607,53 @@ perform_move	rlca
 		add	a,(hl)	; add to steps
 		ld	(hl),a
 		pop	hl
-		jr	.domove
+		jr	.makemove
 
 .switch		push	hl
 		push	bc
-		ld	b,PLAYFIELD_SIZE
+		ld	b,PLAYFIELD_SIZE - 8
 		ld	hl,playground
 .switchloop	ld	a,(hl)
 		and	#C0
 		cp	#40	; blocked tile
-		jr	z,.switchnext
+		jr	nz,.switchnext
 		res	6,(hl)
+		call	findpos_drawsprite
 .switchnext	inc	l
 		djnz	.switchloop
 		pop	bc
 		pop	hl
 		ret
+
+finish_move	ld	e,l
+		call	findpos_drawsprite
+		ld	a,xl
+		ld	l,a
+		call	findpos_drawsprite
+		ld	a,c
+		add	a,low playground.current_location
+		ld	l,a
+;		ld	h,high playground.current_location
+		ld	(hl),e	; update location
+		add	a,(playground.steps - playground.current_location)
+		ld	l,a
+		dec	(hl)	; update steps
+		push	hl
+		call	redraw_bubbles
+		pop	hl
+		xor	a
+		ld	l,low playground.steps
+		or	(hl)
+		inc	l
+		or	(hl)
+		inc	l
+		or	(hl)
+		inc	l
+		or	(hl)
+		ret	nz
+
+		pop	af ; throw away ret and move to next level
+		jp	next_level
 
 findpos_drawsprite
 		push	hl
@@ -1145,7 +1167,7 @@ entercode	call	key_delay
 		call	fadein
 		jp	start_level
 
-key_delay	ld	b,20
+key_delay	ld	b,16
 .loop		halt
 		xor	a
 		in	a,(254)
@@ -1176,47 +1198,21 @@ level2text	inc	a
 next_level	ld	a,255
 		ld	(tmplevel+1),a
 
-		ld	hl,22528+4
-		ld	de,8
-		ld	c,24
-.rows		ld	b,24
-.cols		res	6,(hl)
-		inc	hl
-		djnz	.cols
-
-		add	hl,de
-		dec	c
-		jr	nz,.rows
-
 		ld	b,50
 .waitsec	halt
 		djnz	.waitsec
 
-		ld	a,(level+1)
-		ld	hl,level_texts
-.mainloop	push	hl
 		call	fadeout
 
+		ld	hl,finlevel_text
 		ld	a,0		;width
 		call	print_text_screen_centered
-
-		pop	hl
-.findnz		ld	a,(hl)
-		inc	hl
-		or	a
-		jr	nz,.findnz
-
-		ld	a,(hl)
-		or	a
-		jr	nz,.next
 
 		ld	a,(level+1)
 		inc	a
 		ld	(level+1),a
 		cp	LEVEL_CNT
 		jr	nc,.next
-
-		push	hl
 
 		call	encode_level_code
 		call	translate_level_code
@@ -1232,30 +1228,19 @@ next_level	ld	a,255
 		ld	hl,levelhashtext
 		call	print_text
 
-		pop	hl
-.next		push	hl
-
-		call	fadein
+.next		call	fadein
 .wkey		call	get_key
 		or	a
 		jr	z,.wkey
-
-		pop	hl
-		ld	a,(hl)
-		or	a
-		jr	nz,.mainloop
-
-		jp	start_level
 		jp	play
-game_end
-		ld	a,(level+1)
+
+game_end	ld	a,(level+1)
 		dec	a
 		ld	(level+1),a
 		ld	a,255
 		ld	(tmplevel+1),a
 		pop	hl
 		jp	select_level2
-		ret
 
 fadeout		push	hl
 		ld	d,7
@@ -1988,8 +1973,7 @@ levelhashtext2	db	"        ",0
 txt_nrlevel	db	0,0,0
 txt_level	db	"level",0
 
-level_texts	db	"Well done!",0,0
-		db	0			;end of all level texts
+finlevel_text	db	"AMAZING!",13,"Level complete",0,0
 
 info_text	db	"COLORISTIC",13
 		db	"(ZX-Spectrum version)",13

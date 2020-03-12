@@ -96,22 +96,22 @@ sprite2fntab:	dd	TILE_NOP			; 000
 		s2path	TILE_PATHSW, 0q140		; 240 ... 255
 
 ; assumed aligned to 256
-dir2tile:	db	0	; x  = right 10 + left  00
-		db	139	; ┘  = right 10 + up    01
-		db	128	; ─  = right 10 + right 10
-		db	137	; ┐  = right 10 + down  11
-		db	139	; ┘  = down  11 + left  00
-		db	0	; x  = down  11 + up    01
-		db	136	; └  = down  11 + right 10
-		db	129	; │  = down  11 + down  11
-		db	128	; ─  = left  00 + left  00
-		db	136	; └  = left  00 + up    01
-		db	0	; x  = left  00 + right 10
-		db	138	; ┌  = left  00 + down  11
-		db	137	; ┐  = up    01 + left  00
-		db	129	; │  = up    01 + up    01
-		db	138	; ┌  = up    01 + right 10
-		db	0	; x  = up    01 + down  11
+dir2tile:	db	0	; x  = mirrored left  10 + left  00
+		db	139	; ┘  = mirrored left  10 + up    01
+		db	128	; ─  = mirrored left  10 + right 10
+		db	137	; ┐  = mirrored left  10 + down  11
+		db	139	; ┘  = mirrored up    11 + left  00
+		db	0	; x  = mirrored up    11 + up    01
+		db	136	; └  = mirrored up    11 + right 10
+		db	129	; │  = mirrored up    11 + down  11
+		db	128	; ─  = mirrored right 00 + left  00
+		db	136	; └  = mirrored right 00 + up    01
+		db	0	; x  = mirrored right 00 + right 10
+		db	138	; ┌  = mirrored right 00 + down  11
+		db	137	; ┐  = mirrored down  01 + left  00
+		db	129	; │  = mirrored down  01 + up    01
+		db	138	; ┌  = mirrored down  01 + right 10
+		db	0	; x  = mirrored down  01 + down  11
 
 
 shade_right:	incbin "../gfx/shade_right.spr"
