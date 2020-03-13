@@ -480,8 +480,6 @@ perform_move	rlca
 		ld	(.whatatdir+2),a
 		ld	(.wraponedge+1),a
 		ld	e,a
-		neg
-		ld	(.wrapfind+1),a
 
 		ld	a,(active_color)
 		ld	c,a
@@ -507,8 +505,10 @@ perform_move	rlca
 ; ix = position, b = tile at current position,
 ; c = color, d = direction, e = tile at following position
 
-		xor	a	; is void?
-		or	e
+		xor	a	; reset flags
+		ld	(.additional+1),a
+
+		or	e	; is void?
 		jr	z,.forbidden
 .restartwrap	ld	a,#C0	; is filled or blocked?
 		and	e
@@ -522,9 +522,9 @@ perform_move	rlca
 		jr	z,.colortick
 		cp	12	; is arrow?
 		jr	z,.dirarrow
-.testwrap	bit	4,e
+.testwrap	bit	4,e	; is wrapper?
 		jr	nz,.wrapper
-		bit	5,e
+		bit	5,e	; is powerup?
 		jr	nz,.powerup
 		ld	a,e
 		dec	a	; is base tile?
@@ -554,10 +554,14 @@ perform_move	rlca
 		ld	a,(hl)	; get target path-tile
 		pop	hl
 		or	e	; add color << 4
+		bit	6,b	; was switch path tile?
+		jr	z,.finish
+		set	6,a
 .finish		ld	(ix+0),a
 		ld	a,#86	; mirrored target tile
 		xor	d
 		or	e	; color << 4
+.additional	or	0
 		ld	(hl),a
 		call	finish_move
 .forbidden	call	key_delay
@@ -581,22 +585,6 @@ perform_move	rlca
 		jr	nz,.forbidden
 		jr	.makemove
 
-.wrapper	ld	a,e	; follow-tile
-		and	3
-		cp	d	; direction
-		jr	nz,.forbidden
-.wrapfind	ld	a,0	; find mirror edge
-		add	a,l
-		ld	l,a
-		ld	a,(hl)
-		or	a
-		jr	nz,.wrapfind
-.wraponedge	ld	a,0
-		add	a,l
-		ld	l,a
-		ld	e,(hl)
-		jr	.restartwrap
-
 .powerup	push	hl
 		ld	a,c	; color
 		add	a,low playground.steps
@@ -608,6 +596,40 @@ perform_move	rlca
 		ld	(hl),a
 		pop	hl
 		jr	.makemove
+
+.wrapper	ld	a,e	; follow-tile
+		and	3
+		cp	d	; direction
+		jr	nz,.forbidden
+		ld	a,d
+		rrca
+		jr	c,.wrapvert
+		rrca
+		jr	nc,.wraphoriz
+		ld	a,-8
+		and	l
+		jr	.wrapfind
+.wraphoriz	ld	a,7
+		or	l
+		jr	.wrapfind
+.wrapvert	ex	af,af'
+		ld	a,7
+		and	l
+		ld	l,a
+		ex	af,af'
+		rrca
+		jr	c,.wrapfindloop
+		ex	af,af'
+		or	PLAYFIELD_H << 3
+.wrapfind	ld	l,a	; we got furthest opposite edge
+.wrapfindloop	ld	e,(hl)
+		ld	a,(hl)
+		or	a
+		jp	nz,.restartwrap
+.wraponedge	ld	a,0
+		add	a,l
+		ld	l,a
+		jr	.wrapfindloop
 
 .switch		push	hl
 		push	bc
@@ -621,6 +643,8 @@ perform_move	rlca
 		call	findpos_drawsprite
 .switchnext	inc	l
 		djnz	.switchloop
+		ld	a,#40	; switched path additional flag
+		ld	(.additional+1),a
 		pop	bc
 		pop	hl
 		ret
@@ -659,20 +683,8 @@ findpos_drawsprite
 		push	hl
 		push	de
 		push	bc
-		ld	de,#4008
 		ld	a,l
-		jr	.findpostart
-
-.findposloop1	ex	af,af'
-		call	down2ch
-		ex	af,af'
-.findpostart	sub	8
-		jr	nc,.findposloop1
-		add	a,8
-.findposloop2	inc	e
-		inc	e
-		dec	a
-		jr	nz,.findposloop2
+		call	findpos_a2de
 
 		ld	l,(hl)
 		ld	h,a
@@ -693,6 +705,20 @@ findpos_drawsprite
 		pop	bc
 		pop	de
 		pop	hl
+		ret
+
+findpos_a2de	ld	de,#4008
+		jr	.start
+.loop1		ex	af,af'
+		call	down2ch
+		ex	af,af'
+.start		sub	8
+		jr	nc,.loop1
+		add	a,8
+.loop2		inc	e
+		inc	e
+		dec	a
+		jr	nz,.loop2
 		ret
 
 ;;-----------------------------------------------------------------------------
@@ -757,6 +783,7 @@ draw_sprite	jr	$+2
 
 draw_path_switch
 		ld	a,c
+		ld	(.attr+1),a
 		ld	b,h
 		ld	c,l
 		ld	hl,spr_path_swtch
@@ -799,7 +826,7 @@ draw_path_switch
 		call	downde
 		ex	af,af'
 		dec	a
-		jr	z,.loop
+		jr	nz,.loop
 .attr		ld	c,0
 		jr	draw_base_sprite.finish
 
@@ -1162,10 +1189,7 @@ entercode	call	key_delay
 .set		ld	(tmplevel+1),a
 
 		call	fadeout
-		ld	a,C_BG_PAPER*8 + C_BG_INK
-		call	cls
-		call	fadein
-		jp	start_level
+		jp	play
 
 key_delay	ld	b,16
 .loop		halt
