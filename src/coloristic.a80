@@ -239,11 +239,6 @@ tmplevel	cp	255
 		;load level and print it to the screen
 		call	prepare_level
 		jp	nc,game_end
-
-;		ld	hl,playground
-;		ld	de,undo_area
-;		ld	bc,PLAYFIELD_SIZE*UNDO_LEVELS
-;		ldir
 		jr	.playground
 
 .tmp		ld	a,255
@@ -320,11 +315,21 @@ manage_music	call	mute_unmute
 perform_undo	call	undo
 		jr	mainloop_cont
 
-undo		ld	hl,undo_area+PLAYFIELD_SIZE
-		ld	de,undo_area
-		ld	bc,PLAYFIELD_SIZE*UNDO_LEVELS-1
+undo		ld	a,(undo_area+PLAYFIELD_SIZE-8)
+		or	a
+		ret	z
+		ld	hl,undo_area
+		ld	de,playground
+		ld	bc,PLAYFIELD_SIZE*UNDO_LEVELS
+		ld	a,e
 		ldir
-		ret
+		ld	d,h
+		ld	e,l
+		inc	de
+		ld	bc,PLAYFIELD_SIZE
+		ld	(hl),a
+		ldir
+		jr	prepare_level.justdraw
 
 store_undo	push	hl
 		push	de
@@ -359,6 +364,13 @@ prepare_level	cp	255
 		add	hl,de
 		ld	de,playground
 		ld	bc,PLAYFIELD_SIZE
+		ld	a,e
+		ldir
+		ld	h,d
+		ld	l,e
+		inc	de
+		ld	bc,PLAYFIELD_SIZE*UNDO_LEVELS
+		ld	(hl),a
 		ldir
 
 		ld	(redraw_bubbles.color00+1),bc
