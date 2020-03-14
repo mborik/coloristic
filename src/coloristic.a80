@@ -318,6 +318,8 @@ perform_undo	call	undo
 undo		ld	a,(undo_area+PLAYFIELD_SIZE-8)
 		or	a
 		ret	z
+		ei
+		halt
 		ld	hl,undo_area
 		ld	de,playground
 		ld	bc,PLAYFIELD_SIZE*UNDO_LEVELS
@@ -329,7 +331,12 @@ undo		ld	a,(undo_area+PLAYFIELD_SIZE-8)
 		ld	bc,PLAYFIELD_SIZE
 		ld	(hl),a
 		ldir
-		jr	prepare_level.justdraw
+		ld	a,(active_color)
+		push	af
+		call	prepare_level.justdraw
+		pop	af
+		ld	(active_color),a
+		ret
 
 store_undo	push	hl
 		push	de
@@ -377,10 +384,15 @@ prepare_level	cp	255
 		ld	(redraw_bubbles.color01+1),bc
 		ld	(redraw_bubbles.color10+1),bc
 		ld	(redraw_bubbles.color11+1),bc
+		dec	bc
+		ld	(playground.current_location+0),bc
+		ld	(playground.current_location+2),bc
 		ld	a,#CC ; call z
 		ld	(.firsttime),a
 
-.justdraw	ld	de,#4008
+.justdraw	ei
+		halt
+		ld	de,#4008
 		ld	ix,playground
 		ld	c,10
 .rows		ld	b,8
@@ -480,7 +492,9 @@ prepare_level	cp	255
 		ld	(hl),a
 		ret
 
-perform_move	rlca
+perform_move	ei
+		halt
+		rlca
 		add	a,low ctrl2direction
 		ld	h,high ctrl2direction
 		ld	l,a
@@ -1273,7 +1287,7 @@ entercode	call	key_delay
 		call	fadeout
 		jp	play
 
-key_delay	ld	b,16
+key_delay	ld	b,12
 .loop		halt
 		xor	a
 		in	a,(254)
