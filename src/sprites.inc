@@ -23,17 +23,17 @@ D:		ds 32
 
 	macro s2path tile?, color?
 	opt push listoff
-		s2fn	tile?, spr_path_H, color?	; 128
-		s2fn	tile?, spr_path_V, color?	; 129
+		s2fn	tile?, spr_path_H, color? + 1		; 128
+		s2fn	tile?, spr_path_V, color? + 2		; 129
 		sgap 2
-		s2fn	tile?, spr_path_point.L, color?	; 132
-		s2fn	tile?, spr_path_point.U, color?	; 133
-		s2fn	tile?, spr_path_point.R, color?	; 134
-		s2fn	tile?, spr_path_point.D, color?	; 135
-		s2fn	tile?, spr_path_corn.L, color?	; 136
-		s2fn	tile?, spr_path_corn.U, color?	; 137
-		s2fn	tile?, spr_path_corn.R, color?	; 138
-		s2fn	tile?, spr_path_corn.D, color?	; 139
+		s2fn	tile?, spr_path_point.L, color? + 1	; 132
+		s2fn	tile?, spr_path_point.U, color? + 2	; 133
+		s2fn	tile?, spr_path_point.R, color? + 0	; 134
+		s2fn	tile?, spr_path_point.D, color? + 0	; 135
+		s2fn	tile?, spr_path_corn.L, color? + 2	; 136
+		s2fn	tile?, spr_path_corn.U, color? + 1	; 137
+		s2fn	tile?, spr_path_corn.R, color? + 0	; 138
+		s2fn	tile?, spr_path_corn.D, color? + 3	; 139
 		sgap 4
 	opt pop
 	endm
@@ -43,8 +43,9 @@ D:		ds 32
 TILE_BASE	= 0
 TILE_TICK	= 2
 TILE_WRAP	= 4
-TILE_PATHSW	= 6
-TILE_NOP	= 8
+TILE_PATH	= 6
+TILE_PATHSW	= 8
+TILE_NOP	= 10
 
 DIRECTION_LEFT	= %00
 DIRECTION_UP	= %01
@@ -86,10 +87,10 @@ sprite2fntab:	dd	TILE_NOP			; 000
 		s2fn	TILE_BASE, spr_blk_arrow.R, 0q070	; 078
 		s2fn	TILE_BASE, spr_blk_arrow.D, 0q070	; 079
 		sgap 48					; 080 ... 127
-		s2path	TILE_BASE, 0q160		; 128 ... 143
-		s2path	TILE_BASE, 0q120		; 144 ... 159
-		s2path	TILE_BASE, 0q150		; 160 ... 175
-		s2path	TILE_BASE, 0q140		; 176 ... 191
+		s2path	TILE_PATH, 0q160		; 128 ... 143
+		s2path	TILE_PATH, 0q120		; 144 ... 159
+		s2path	TILE_PATH, 0q150		; 160 ... 175
+		s2path	TILE_PATH, 0q140		; 176 ... 191
 		s2path	TILE_PATHSW, 0q160		; 192 ... 207
 		s2path	TILE_PATHSW, 0q120		; 208 ... 223
 		s2path	TILE_PATHSW, 0q150		; 224 ... 239

@@ -513,21 +513,20 @@ perform_move	rlca
 .restartwrap	ld	a,#C0	; is filled or blocked?
 		and	e
 		jr	nz,.forbidden
+		bit	4,e	; is wrapper?
+		jr	nz,.wrapper
+		bit	5,e	; is powerup?
+		jr	nz,.powerup
 		ld	a,#0C
 		and	e
-		jr	z,.testwrap
 		cp	4	; is another start tile?
 		jr	z,.forbidden
 		cp	8	; is color tick?
 		jr	z,.colortick
 		cp	12	; is arrow?
 		jr	z,.dirarrow
-.testwrap	bit	4,e	; is wrapper?
-		jr	nz,.wrapper
-		bit	5,e	; is powerup?
-		jr	nz,.powerup
 		ld	a,e
-		dec	a	; is base tile?
+		dec	a	; is empty tile?
 		jr	z,.makemove
 		dec	a
 		dec	a	; is blocker?
@@ -665,8 +664,8 @@ finish_move	ld	e,l
 		push	hl
 		call	redraw_bubbles
 		pop	hl
-		xor	a
 		ld	l,low playground.steps
+		xor	a
 		or	(hl)
 		inc	l
 		or	(hl)
@@ -675,6 +674,22 @@ finish_move	ld	e,l
 		inc	l
 		or	(hl)
 		ret	nz
+
+		ld	l,a
+		ld	b,PLAYFIELD_SIZE - 8
+.testfield	ld	c,(hl)
+		inc	l
+		xor	a
+		or	c
+		jr	z,.testnext
+		cp	3
+		jr	z,.testnext
+		and	16+128
+		cp	16	; wrapper
+		jr	z,.testnext
+		bit	7,c
+		ret	z
+.testnext	djnz	.testfield
 
 		pop	af ; throw away ret and move to next level
 		jp	next_level
@@ -748,8 +763,8 @@ draw_base_sprite
 		org	$-1
 		call	downde
 		djnz	.loop
-.finish		pop	hl
-		ld	a,h
+		pop	hl
+.finish		ld	a,h
 		and	#F8
 		rrca
 		rrca
@@ -778,12 +793,15 @@ draw_sprite	jr	$+2
 		jr	draw_base_sprite
 		jr	draw_tick
 		jr	draw_wrap
+		jr	draw_path
 		jr	draw_path_switch
 		ret
 
 draw_path_switch
-		ld	a,c
-		ld	(.attr+1),a
+		ld	a,0q170
+		and	c
+		ld	c,a
+		push	bc
 		ld	b,h
 		ld	c,l
 		ld	hl,spr_path_swtch
@@ -827,8 +845,27 @@ draw_path_switch
 		ex	af,af'
 		dec	a
 		jr	nz,.loop
-.attr		ld	c,0
+		pop	hl
+		pop	bc
 		jr	draw_base_sprite.finish
+
+draw_path	ld	(draw_path.wrap.pix+1),de
+		push	bc
+		ld	a,0q170
+		and	c
+		ld	c,a
+		call	draw_base_sprite
+		ld	(draw_path.wrap+1),hl
+		pop	bc
+		ld	b,2
+		ld	hl,-64
+		bit	1,c
+		call	nz,draw_path.wrap
+		rrc	b
+		ld	hl,-2
+		bit	0,c
+		call	nz,draw_path.wrap
+		ret
 
 draw_wrap	srl	c
 		jr	nc,.noleft
@@ -966,6 +1003,39 @@ draw_wrap	srl	c
 		call	downde
 		ld	a,(de)
 		or	(hl)
+		ld	(de),a
+		ret
+
+draw_path.wrap	ld	de,0
+		add	hl,de
+.pix		ld	de,0
+		ld	a,c
+		and	b
+		bit	1,a
+		ld	a,(hl)
+		jr	nz,.horiz
+		res	0,c
+		cp	0q070
+		ret	nz
+		inc	d
+		ld	b,8
+.vertical	ld	a,(de)
+		or	#80
+		ld	(de),a
+		call	downde
+		ld	a,(de)
+		or	#80
+		ld	(de),a
+		inc	d
+		djnz	.vertical
+		ret
+
+.horiz		res	1,c
+		cp	0q070
+		ret	nz
+		ld	a,#FF
+		ld	(de),a
+		inc	e
 		ld	(de),a
 		ret
 
