@@ -1,5 +1,4 @@
-K_SYMB	= #1
-K_CAPS	= #2
+K_SYMB	= 0
 K_TRUE	= #4
 K_INV	= #5
 K_LOCK	= #6
@@ -15,29 +14,29 @@ K_GRAPH	= #F
 K_BREAK	= #1B
 K_SPACE	= #20
 
-ctrldefs	db	"bnm",K_SYMB,K_SPACE
-		db	"hjkl",K_ENTER
-		db	"yui",K_LEFT,K_RIGHT
-		db	"67890"
-		db	"54321"
-		db	"trew",K_UP
-		db	"gfds",K_DOWN
-		db	"vcxz",0
+ctrldefs	db	"zxcv"
+		db	K_SPACE,K_SYMB,"mnb"
+		db	K_ENTER,"lkjh"
+		db	K_RIGHT,K_LEFT,"iuy"
+		db	"09",K_RIGHT,K_UP,K_DOWN ; Cursor joystick
+		db	"1234",K_LEFT
+		db	K_UP,"wert"
+		db	K_DOWN,"sdfg"
 
-keys		db	"bnm",K_SYMB,K_SPACE
-		db	"hjkl",K_ENTER
-		db	"yuiop"
-		db	"67890"
-		db	"54321"
-		db	"trewq"
-		db	"gfdsa"
-		db	"vcxz",0
+keys		db	"zxcv"
+		db	K_SPACE,K_SYMB,"mnb"
+		db	K_ENTER,"lkjh"
+		db	"poiuy"
+		db	"09876"
+		db	"12345"
+		db	"qwert"
+		db	"asdfg"
 
-.caps		db	"BNM",K_EXT,K_BREAK
-		db	"HJKL",K_ENTER
-		db	"YUIOP"
-		db	K_DOWN,K_UP,K_RIGHT,K_GRAPH,K_DEL ; Cursor joystick
-		db	K_LEFT,K_INV,K_TRUE,K_LOCK,K_EDIT
-		db	"TREWQ"
-		db	"GFDSA"
-		db	"VCXZ",K_CAPS
+.caps		db	"ZXCV"
+		db	K_SPACE,K_SYMB,"MNB"
+		db	K_ENTER,"LKJH"
+		db	"POIUY"
+		db	K_DEL,K_GRAPH,K_RIGHT,K_UP,K_DOWN ; Cursor joystick
+		db	K_EDIT,K_LOCK,K_TRUE,K_INV,K_LEFT
+		db	"QWERT"
+		db	"ASDFG"

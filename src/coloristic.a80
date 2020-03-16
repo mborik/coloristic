@@ -80,6 +80,7 @@ maxlevel	ld	a,79
 		cp	LEVEL_CNT
 		jr	c,.loop
 level_select	call	get_controls
+		jr	z,level_select
 		cp	K_BREAK
 		jr	z,level_continue
 		cp	K_EDIT
@@ -262,6 +263,10 @@ tmplevel	cp	255
 		call	print_text_centered
 
 mainloop	call	get_controls
+		cp	K_LEFT
+		jr	c,mainloop
+		cp	K_UP + 1
+		jp	c,perform_move
 
 		cp	'c'		;level code
 		jp	z,entercode
@@ -280,11 +285,6 @@ mainloop	call	get_controls
 
 		cp	'r'		;reload
 		jp	z,start_level
-
-		cp	K_LEFT
-		jr	c,mainloop_cont
-		cp	K_UP + 1
-		jp	c,perform_move
 
 		cp	'1'
 		jr	c,mainloop_cont
@@ -492,9 +492,7 @@ prepare_level	cp	255
 		ld	(hl),a
 		ret
 
-perform_move	ei
-		halt
-		rlca
+perform_move	rlca
 		add	a,low ctrl2direction
 		ld	h,high ctrl2direction
 		ld	l,a
@@ -536,6 +534,7 @@ perform_move	ei
 
 		or	e	; is void?
 		jr	z,.forbidden
+
 .restartwrap	ld	a,#C0	; is filled or blocked?
 		and	e
 		jr	nz,.forbidden
@@ -560,7 +559,9 @@ perform_move	ei
 		inc	a	; is switch?
 		call	z,.switch
 
-.makemove	ld	a,c
+.makemove	ei
+		halt
+		ld	a,c
 		rlca
 		rlca
 		rlca
@@ -1417,41 +1418,38 @@ fadein		push	hl
 		ret
 
 get_controls	ld	hl,ctrldefs
-		ld	bc,#fefe
-		in	a,(c)
-		rra
-		jr	c,get_key.test
-		ld	hl,keys.caps
-		jr	get_key.test
+		jr	get_key.entry
 
 get_key		ld	hl,keys
-		ld	bc,#fefe
+.entry		push	hl
+		ld	bc,#FEFE
+		ld	de,#0704
 		in	a,(c)
+		cpl
+		and	#1F
 		rra
-		jr	c,.test
+		jr	nc,.cols
 		ld	hl,keys.caps
-.test		rrc	b
-.loop		push	hl
-		ld	d,8
-.rows		in	a,(c)
-		rlca
-		rlca
-		rlca
-		ld	e,5
-.cols		rlca
-		jr	c,.next
-		ld	a,(hl)
-		pop	hl
-		ret
-
-.next		inc	hl
+.cols		rra
+		jr	c,.found
+		inc	hl
 		dec	e
 		jr	nz,.cols
 		rrc	b
 		dec	d
-		jr	nz,.rows
+		jr	z,.reentry
+.rows		in	a,(c)
+		cpl
+		and	#1F
+		ld	e,5
+		jr	.cols
+
+.reentry	pop	hl
+		jr	.entry
+
+.found		ld	a,(hl)
 		pop	hl
-		jr	.loop
+		ret
 
 		include "keymap.inc"
 
