@@ -36,7 +36,7 @@ main_start	call	play
 		ld	a,(level+1)
 		ld	(tmplevel+1),a
 select_level2
-maxlevel	ld	a,79
+maxlevel	ld	a,0
 		ld	b,a
 		ld	a,(level+1)
 		cp	b
@@ -1423,7 +1423,7 @@ get_controls	ld	hl,ctrldefs
 get_key		ld	hl,keys
 .entry		push	hl
 		ld	bc,#FEFE
-		ld	de,#0704
+		ld	de,#0804
 		in	a,(c)
 		cpl
 		and	#1F
