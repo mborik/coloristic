@@ -11,6 +11,7 @@ OUTPUT=coloristic.tap
 
 cd gfx
 LZX plan.scr plan.pak
+LZX win.scr win.pak
 
 cd ../src
 ${ASM} --nologo --lst coloristic.a80

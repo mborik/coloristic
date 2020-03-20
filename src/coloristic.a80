@@ -239,7 +239,6 @@ tmplevel	cp	255
 
 		;load level and print it to the screen
 		call	prepare_level
-		jp	nc,game_end
 		jr	.playground
 
 .tmp		ld	a,255
@@ -351,12 +350,12 @@ store_undo	push	hl
 		ret
 
 prepare_level	cp	255
-		scf
 		ret	z
 		cp	LEVEL_CNT
-		ret	nc
+		jr	c,.copy2pg
 
-		rlca
+		xor	a
+.copy2pg	rlca
 		ld	l,a
 		ld	h,0
 		add	hl,hl
@@ -456,19 +455,7 @@ prepare_level	cp	255
 		call	redraw_bubbles
 		inc	a
 		ld	(.firsttime),a
-		dec	a
-		ld	bc,#0303
-		ld	hl,playground.steps
-.findintrocolor	or	(hl)
-		inc	hl
-		jr	nz,.setintrocolor
-		djnz	.findintrocolor
-.setintrocolor	ld	a,c
-		xor	b
-		ld	(active_color),a
-		call	reset_color_keys
-		scf
-		ret
+		jp	findintrocolor
 
 .startile	ld	a,(ix+0)
 		and	3
@@ -1182,6 +1169,20 @@ redraw_bubbles	ld	a,(playground.steps+0)
 		jr	nz,.loop
 		ret
 
+findintrocolor	xor	a
+		ld	bc,#0303
+		ld	hl,playground.steps
+.loop		or	(hl)
+		inc	hl
+		jr	nz,.setintrocolor
+		djnz	.loop
+		or	a
+		jr	z,reset_color_keys
+
+.setintrocolor	ld	a,c
+		xor	b
+		ld	(active_color),a
+
 reset_color_keys
 		ld	a,#38
 		ld	hl,COLOR_KEYS_PTR-1
@@ -1325,15 +1326,15 @@ next_level	ld	a,255
 
 		call	fadeout
 
-		ld	hl,finlevel_text
-		ld	a,0		;width
-		call	print_text_screen_centered
-
 		ld	a,(level+1)
 		inc	a
 		ld	(level+1),a
 		cp	LEVEL_CNT
-		jr	nc,.next
+		jr	nc,game_end
+
+		ld	hl,finlevel_text
+		ld	a,0		;width
+		call	print_text_screen_centered
 
 		call	encode_level_code
 		call	translate_level_code
@@ -1349,18 +1350,32 @@ next_level	ld	a,255
 		ld	hl,levelhashtext
 		call	print_text
 
-.next		call	fadein
+		call	fadein
 .wkey		call	get_key
 		or	a
 		jr	z,.wkey
 		jp	play
 
-game_end	ld	a,(level+1)
-		dec	a
+game_end	xor	a
 		ld	(level+1),a
 		ld	a,255
 		ld	(tmplevel+1),a
-		pop	hl
+
+		ld	hl,winwin_screen
+		ld	de,#4000
+		call	unpack
+
+		ld	hl,winwin_text
+		ld	b,155
+		ld	c,0
+		ld	a,0		;width
+		call	print_text_centered
+
+.wkey		call	get_key
+		or	a
+		jr	z,.wkey
+
+		call	fadeout
 		jp	select_level2
 
 fadeout		push	hl
@@ -1928,7 +1943,6 @@ prepare_info_screen
 		ld	de,precalcscr
 		ld	bc,#1800
 		ldir
-
 		ret
 
 info_screen	ld	a,(level+1)
@@ -2093,7 +2107,10 @@ levelhashtext2	db	"        ",0
 txt_nrlevel	db	0,0,0
 txt_level	db	"level",0
 
-finlevel_text	db	"AMAZING!",13,"Level complete",0,0
+finlevel_text	db	"AMAZING!",13,"Level complete",0
+winwin_text	db	"Congratulations, you've beaten them all!",13
+		db	"You've proven an amazing achievement",13
+		db	"because you completed all 80 levels.",0
 
 info_text	db	"COLORISTIC",13
 		db	"(ZX-Spectrum version)",13
@@ -2115,8 +2132,9 @@ xcoord		db	0
 ycoord		db	0
 
 active_color	db	0
-
 music_muted	db	0
+
+winwin_screen	incbin	"../gfx/win.pak"
 
 ;;-----------------------------------------------------------------------------
 
