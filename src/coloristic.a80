@@ -85,9 +85,7 @@ level_select	call	get_controls
 		jr	z,level_continue
 		cp	K_EDIT
 		jr	z,level_continue
-		cp	K_SPACE
-		jr	z,level_play
-		cp	K_ENTER
+		cp	K_FIRE
 		jr	z,level_play
 		cp	K_LEFT
 		jr	z,level_down
@@ -267,7 +265,7 @@ mainloop	call	get_controls
 		cp	K_UP + 1
 		jp	c,perform_move
 
-		cp	K_SPACE		;change color
+		cp	K_FIRE		;change color
 		jr	z,change_color
 
 		cp	'c'		;level code
@@ -1313,14 +1311,20 @@ entercode	call	key_delay
 		call	fadeout
 		jp	play
 
-key_delay	ld	b,12
+key_delay	ld	bc,#0F1F
 .loop		halt
 		xor	a
+		in	a,(31)
+		and	c
+		jr	z,.tstkeys
+		cp	c
+		jr	c,.next
+.tstkeys	xor	a
 		in	a,(254)
 		cpl
 		and	31
 		ret	z
-		djnz	.loop
+.next		djnz	.loop
 		ret
 
 level2text	inc	a
@@ -1375,8 +1379,7 @@ next_level	ld	a,255
 		call	print_text
 
 		call	fadein
-.wkey		call	get_key
-		or	a
+.wkey		call	get_controls
 		jr	z,.wkey
 		jp	play
 
@@ -1395,8 +1398,7 @@ game_end	xor	a
 		ld	a,0		;width
 		call	print_text_centered
 
-.wkey		call	get_key
-		or	a
+.wkey		call	get_controls
 		jr	z,.wkey
 
 		call	fadeout
@@ -1456,12 +1458,31 @@ fadein		push	hl
 		pop	hl
 		ret
 
+get_ctrls_loop	call	get_key_core
+		ret	nz
 get_controls	ld	hl,ctrldefs
-		jr	get_key.entry
+		ld	bc,#1F
+		in	a,(c)
+		and	c
+		jr	z,get_ctrls_loop
+		cp	c
+		jr	z,get_ctrls_loop
+		ld	b,5
+		ld	hl,kempdefs
+.kemploop	rrca
+		jr	c,.kempston
+		inc	hl
+		djnz	.kemploop
+.kempston	ld	a,(hl)
+		or	a
+		ret
 
 get_key		ld	hl,keys
-.entry		push	hl
-		ld	bc,#FEFE
+		call	get_key_core
+		ret	nz
+		jr	get_key
+
+get_key_core	ld	bc,#FEFE
 		ld	de,#0804
 		in	a,(c)
 		cpl
@@ -1476,21 +1497,22 @@ get_key		ld	hl,keys
 		jr	nz,.cols
 		rrc	b
 		dec	d
-		jr	z,.reentry
+		ret	z
 .rows		in	a,(c)
 		cpl
 		and	#1F
 		ld	e,5
 		jr	.cols
 
-.reentry	pop	hl
-		jr	.entry
-
 .found		ld	a,(hl)
-		pop	hl
+		or	a
 		ret
 
 		include "keymap.inc"
+
+kempdefs	db	K_RIGHT, K_LEFT, K_DOWN, K_UP, K_FIRE, 0
+
+;;-----------------------------------------------------------------------------
 
 set_font	ld	(font),hl
 		ret
