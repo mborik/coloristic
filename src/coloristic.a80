@@ -267,11 +267,14 @@ mainloop	call	get_controls
 		cp	K_UP + 1
 		jp	c,perform_move
 
+		cp	K_SPACE		;change color
+		jr	z,change_color
+
 		cp	'c'		;level code
 		jp	z,entercode
 
 		cp	'm'		;music off/on
-		jp	z,manage_music
+		jr	z,manage_music
 
 		cp	'i'		;info
 		jp	z,info_screen
@@ -312,6 +315,17 @@ manage_music	call	mute_unmute
 		jr	mainloop_cont
 
 perform_undo	call	undo
+		jr	mainloop_cont
+
+change_color	ld	a,(active_color)
+		inc	a
+		and	3
+		ld	e,a
+		add	a,low playground.steps
+		ld	l,a
+		ld	h,high playground.steps
+		xor	a
+		call	findplayablecolor.findnext
 		jr	mainloop_cont
 
 undo		ld	a,(undo_area+PLAYFIELD_SIZE-8)
@@ -455,7 +469,7 @@ prepare_level	cp	255
 		call	redraw_bubbles
 		inc	a
 		ld	(.firsttime),a
-		jp	findintrocolor
+		jp	findplayablecolor
 
 .startile	ld	a,(ix+0)
 		and	3
@@ -679,8 +693,7 @@ finish_move	ld	e,l
 		call	redraw_bubbles
 		pop	hl
 		ld	l,low playground.steps
-		xor	a
-		or	(hl)
+		ld	a,(hl)
 		inc	l
 		or	(hl)
 		inc	l
@@ -1169,18 +1182,29 @@ redraw_bubbles	ld	a,(playground.steps+0)
 		jr	nz,.loop
 		ret
 
-findintrocolor	xor	a
-		ld	bc,#0303
+findplayablecolor
+		xor	a
 		ld	hl,playground.steps
+		ld	e,a
+.findnext	ld	bc,#0303
 .loop		or	(hl)
-		inc	hl
-		jr	nz,.setintrocolor
+		jr	nz,.setcolor
+		ex	af,af'
+		ld	a,l
+		inc	a
+		ld	l,a
+		cp	4 + (low playground.steps)
+		jr	c,.nowrap
+		ld	l,low playground.steps
+.nowrap		ex	af,af'
 		djnz	.loop
-		or	a
+		or	(hl)
 		jr	z,reset_color_keys
 
-.setintrocolor	ld	a,c
-		xor	b
+.setcolor	ld	a,b
+		xor	c
+		add	a,e
+		and	c
 		ld	(active_color),a
 
 reset_color_keys
@@ -2061,6 +2085,9 @@ im2_rut		push	ix
 		ret
 
 
+winwin_screen	incbin	"../gfx/win.pak"
+
+
 		opt push listoff
 ;;-----------------------------------------------------------------------------
 ;; Setting for depacker according to compression identification -tXYoAoB
@@ -2133,8 +2160,6 @@ ycoord		db	0
 
 active_color	db	0
 music_muted	db	0
-
-winwin_screen	incbin	"../gfx/win.pak"
 
 ;;-----------------------------------------------------------------------------
 
