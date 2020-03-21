@@ -30,7 +30,7 @@ start:		di
 		ld	a,C_BG_PAPER
 		out	(254),a
 		call	prepare_info_screen
-		call	setup_im2
+		call	setup_all
 main_start	call	play
 
 		ld	a,(level+1)
@@ -79,7 +79,7 @@ maxlevel	ld	a,0
 		ld	a,e
 		cp	LEVEL_CNT
 		jr	c,.loop
-level_select	call	get_controls
+level_select	call	get_controls.entry
 		jr	z,level_select
 		cp	K_BREAK
 		jr	z,level_continue
@@ -259,7 +259,7 @@ tmplevel	cp	255
 		ld	hl,txt_level
 		call	print_text_centered
 
-mainloop	call	get_controls
+mainloop	call	get_controls.entry
 		cp	K_LEFT
 		jr	c,mainloop
 		cp	K_UP + 1
@@ -1313,6 +1313,7 @@ entercode	call	key_delay
 
 key_delay	ld	bc,#0F1F
 .loop		halt
+.havekempston	jr	.tstkeys
 		xor	a
 		in	a,(31)
 		and	c
@@ -1379,7 +1380,8 @@ next_level	ld	a,255
 		call	print_text
 
 		call	fadein
-.wkey		call	get_controls
+
+.wkey		call	get_controls.entry
 		jr	z,.wkey
 		jp	play
 
@@ -1398,7 +1400,7 @@ game_end	xor	a
 		ld	a,0		;width
 		call	print_text_centered
 
-.wkey		call	get_controls
+.wkey		call	get_controls.entry
 		jr	z,.wkey
 
 		call	fadeout
@@ -1458,15 +1460,16 @@ fadein		push	hl
 		pop	hl
 		ret
 
-get_ctrls_loop	call	get_key_core
+get_controls	call	get_key_core
 		ret	nz
-get_controls	ld	hl,ctrldefs
+.entry		ld	hl,ctrldefs
+.havekempston	jr	get_controls
 		ld	bc,#1F
 		in	a,(c)
 		and	c
-		jr	z,get_ctrls_loop
+		jr	z,get_controls
 		cp	c
-		jr	z,get_ctrls_loop
+		jr	z,get_controls
 		ld	b,5
 		ld	hl,kempdefs
 .kemploop	rrca
@@ -2018,7 +2021,7 @@ mute_unmute	ld	a,(music_muted)
 		call	music_stop
 		ret
 
-setup_im2	di
+setup_all	di
 
 		;prepare im2 table
 		ld	hl,im2_vector
@@ -2043,8 +2046,27 @@ setup_im2	di
 		;init music
 		call	music_init
 
-		;and enable interrupt
+		;detect kempston
 		ei
+		halt
+		ld	bc,#001F
+		in	b,(c)
+		ld	a,b
+		rlca
+		ret	c
+		ld	a,b
+		and	3
+		cp	3
+		ret	z
+		ld	a,b
+		rrca
+		rrca
+		and	3
+		cp	3
+		ret	z
+		xor	a
+		ld	(get_controls.havekempston+1),a
+		ld	(key_delay.havekempston+1),a
 		ret
 
 im2_rut		push	ix
