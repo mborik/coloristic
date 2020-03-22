@@ -21,7 +21,7 @@ STEP_COUNT_SIZE	equ	4
 PLAYFIELD_SIZE	equ	96
 COLOR_KEYS_PTR	equ	#5822
 
-UNDO_LEVELS	equ	5
+UNDO_LEVELS	equ	15
 LEVEL_CNT	equ	80
 
 
@@ -329,20 +329,23 @@ change_color	ld	a,(active_color)
 undo		ld	a,(undo_area+PLAYFIELD_SIZE-8)
 		or	a
 		ret	z
-		ei
-		halt
 		ld	hl,undo_area
 		ld	de,playground
 		ld	bc,PLAYFIELD_SIZE*UNDO_LEVELS
 		ld	a,e
 		ldir
-		ld	d,h
-		ld	e,l
+		ld	h,d
+		ld	l,e
 		inc	de
-		ld	bc,PLAYFIELD_SIZE
+		ld	bc,PLAYFIELD_SIZE-1
 		ld	(hl),a
 		ldir
-		ld	a,(active_color)
+		dec	a
+		ld	(store_undo.lastcolor+1),a
+		ld	(perform_move.makemove+1),a
+		ld	hl,playground+PLAYFIELD_SIZE-9
+		ld	a,(hl)	; pick stored active_color
+		ld	(hl),c	; and discard from level data
 		push	af
 		call	prepare_level.justdraw
 		pop	af
@@ -352,11 +355,18 @@ undo		ld	a,(undo_area+PLAYFIELD_SIZE-8)
 store_undo	push	hl
 		push	de
 		push	bc
+		ld	a,(active_color)
+.lastcolor	cp	#CC
+		jr	z,.nop
+		ld	(.lastcolor+1),a
 		ld	hl,playground+PLAYFIELD_SIZE*UNDO_LEVELS-1
 		ld	de,undo_area+PLAYFIELD_SIZE*UNDO_LEVELS-1
 		ld	bc,PLAYFIELD_SIZE*UNDO_LEVELS
 		lddr
-		pop	bc
+		ld	(undo_area+PLAYFIELD_SIZE-9),a
+		xor	a
+		ld	(perform_move.makemove+1),a
+.nop		pop	bc
 		pop	de
 		pop	hl
 		ret
@@ -387,7 +397,7 @@ prepare_level	cp	255
 		ld	h,d
 		ld	l,e
 		inc	de
-		ld	bc,PLAYFIELD_SIZE*UNDO_LEVELS
+		ld	bc,PLAYFIELD_SIZE*UNDO_LEVELS-1
 		ld	(hl),a
 		ldir
 
@@ -400,6 +410,8 @@ prepare_level	cp	255
 		ld	(playground.current_location+2),bc
 		ld	a,#CC ; call z
 		ld	(.firsttime),a
+		ld	(store_undo.lastcolor+1),a
+		ld	(perform_move.makemove+1),a
 
 .justdraw	ei
 		halt
@@ -558,8 +570,9 @@ perform_move	rlca
 		inc	a	; is switch?
 		call	z,.switch
 
-.makemove	ei
-		halt
+.makemove	ld	a,0	; nonzero when we storing undo
+		or	a
+		call	nz,store_undo
 		ld	a,c
 		rlca
 		rlca
@@ -592,8 +605,7 @@ perform_move	rlca
 .forbidden	call	key_delay
 		jp	mainloop
 
-.firstmove	call	store_undo
-		ld	a,#84
+.firstmove	ld	a,#84
 		or	d
 		or	e	; color << 4
 		jr	.finish
@@ -674,7 +686,9 @@ perform_move	rlca
 		pop	hl
 		ret
 
-finish_move	ld	e,l
+finish_move	ei
+		halt
+		ld	e,l
 		call	findpos_drawsprite
 		ld	a,xl
 		ld	l,a
@@ -1207,6 +1221,7 @@ findplayablecolor
 
 reset_color_keys
 		ld	a,#38
+		ld	(perform_move.makemove+1),a
 		ld	hl,COLOR_KEYS_PTR-1
 		ld	de,#40
 		ld	(hl),a
@@ -1297,6 +1312,7 @@ entercode	call	key_delay
 		jr	nc,.nochg_max
 
 		;entered code is bigger than max, so update max
+		ld	a,c
 		ld	(maxlevel+1),a
 
 .nochg_max	ld	a,255
