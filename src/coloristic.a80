@@ -1837,6 +1837,7 @@ down2ch		ld	a,64
 		ret
 
 encode_level_code
+		ld	a,(level+1)
 		ld	ix,levelhash
 		ld	d,a
 
