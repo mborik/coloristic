@@ -2208,12 +2208,12 @@ info_text	db	"COLORISTIC",13
 		db	"[coloristic-game.com]",13
 		db	13, 13
 		db	"code, graphics, music, intro screen:",13
-		db	"mborik",13
+		db	"Martin Borik",13
 		db	13
 		db	"user interface engine: ub880d",13
 		db	"font: Proxima Software & ub880d",13
 		db	13
-		db	"betatest: ub880d, rombor, solaris104",13
+		db	"betatesting: ub880d, rombor, solaris104",13
 		db	0
 
 xcoord		db	0
