@@ -146,7 +146,7 @@ level_play	ld	a,(tmplevel+1)
 		jp	nz,main_start
 
 level_continue	ld	a,(tmplevel+1)
-		cp	255
+		cp	-1
 		jp	z,main_start
 		ld	(level+1),a
 		jp	main_start
@@ -206,22 +206,31 @@ highlight_level
 		ld	(hl),d
 		ret
 
-cls		ld	hl,#4000
+cls		ld	hl,im2_rut.counter+1
+		push	hl
+		ld	bc,#17ff
+		ld	(hl),c	; stop updating color key flashing
+		inc	bc
+		ld	hl,#4000
 		ld	de,#4001
-		ld	bc,#1800
 		ld	(hl),l
 		ldir
 		ld	(hl),a
 		ld	bc,#2FF
 		ldir
+		pop	hl
+		ld	(hl),c
 		ret
 
-play		ld	a,C_BG_PAPER
-		out	(254),a
+play		ld	a,-1	; stop updating color key flashing
+		ld	(im2_rut.counter+1),a
 
 		ld	hl,gameplan
 		ld	de,#4000
 		call	unpack
+
+		xor	a
+		ld	(im2_rut.counter+1),a
 
 start_level
 .nokey		xor	a
@@ -232,14 +241,14 @@ start_level
 		halt
 
 level		ld	a,0
-tmplevel	cp	255
+tmplevel	cp	-1
 		jr	z,.tmp
 
 		;load level and print it to the screen
 		call	prepare_level
 		jr	.playground
 
-.tmp		ld	a,255
+.tmp		ld	a,-1
 		ld	(tmplevel+1),a
 		call	prepare_level.justdraw
 
@@ -371,7 +380,7 @@ store_undo	push	hl
 		pop	hl
 		ret
 
-prepare_level	cp	255
+prepare_level	cp	-1
 		ret	z
 		cp	LEVEL_CNT
 		jr	c,.copy2pg
@@ -1315,7 +1324,7 @@ entercode	call	key_delay
 		ld	a,c
 		ld	(maxlevel+1),a
 
-.nochg_max	ld	a,255
+.nochg_max	ld	a,-1
 		jr	.set
 
 .end1		pop	bc
@@ -1362,7 +1371,7 @@ level2text	inc	a
 		ld	(hl),0
 		ret
 
-next_level	ld	a,255
+next_level	ld	a,-1
 		ld	(tmplevel+1),a
 
 		ld	b,50
@@ -1387,7 +1396,7 @@ next_level	ld	a,255
 		ld	hl,levelhashtext
 		call	get_width
 
-		ld	a,255
+		ld	a,-1
 		sub	e
 		ld	c,a
 		ld	b,180
@@ -1403,7 +1412,7 @@ next_level	ld	a,255
 
 game_end	xor	a
 		ld	(level+1),a
-		ld	a,255
+		ld	a,-1
 		ld	(tmplevel+1),a
 
 		ld	hl,winwin_screen
@@ -1947,7 +1956,7 @@ get_level_code
 		jr	c,get_level_code_err	; <0,'0')
 
 		cp	'F'+1
-		jr	nc,get_level_code_err	; ('F',255>
+		jr	nc,get_level_code_err	; ('F',-1>
 
 		cp	'9'+1
 		jr	c,.dec			; <'0','9'>
@@ -2039,6 +2048,8 @@ mute_unmute	ld	a,(music_muted)
 		ret
 
 setup_all	di
+		ld	a,C_BG_PAPER
+		out	(254),a
 
 		;prepare im2 table
 		ld	hl,im2_vector
@@ -2101,6 +2112,7 @@ im2_rut		push	ix
 
 .counter	ld	a,0
 		inc	a
+		jr	z,.testmute
 		cp	34
 		jr	nz,.setc
 		xor	a
@@ -2213,7 +2225,7 @@ info_text	db	"COLORISTIC",13
 		db	"user interface engine: ub880d",13
 		db	"font: Proxima Software & ub880d",13
 		db	13
-		db	"betatesting: ub880d, rombor, solaris104",13
+		db	"betatesting: ub880d, rombor, solaris104"
 		db	0
 
 xcoord		db	0
