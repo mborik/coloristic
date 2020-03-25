@@ -419,6 +419,7 @@ prepare_level	cp	-1
 		ld	(playground.current_location+2),bc
 		ld	a,#CC ; call z
 		ld	(.firsttime),a
+		ld	(.endno1stTime+1),a
 		ld	(store_undo.lastcolor+1),a
 		ld	(perform_move.makemove+1),a
 
@@ -486,8 +487,13 @@ prepare_level	cp	-1
 		dec	c
 		jr	nz,.rows
 		call	redraw_bubbles
-		inc	a
+.endno1stTime	ld	a,0
+		or	a
+		ret	z
+		ld	a,1
 		ld	(.firsttime),a
+		dec	a
+		ld	(.endno1stTime+1),a
 		jp	findplayablecolor
 
 .startile	ld	a,(ix+0)
