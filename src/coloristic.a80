@@ -27,8 +27,6 @@ LEVEL_CNT	equ	80
 
 start:		di
 		ld	sp,start
-		ld	a,C_BG_PAPER
-		out	(254),a
 		call	prepare_info_screen
 		call	setup_all
 main_start	call	play
@@ -489,7 +487,7 @@ prepare_level	cp	-1
 		call	redraw_bubbles
 .endno1stTime	ld	a,0
 		or	a
-		ret	z
+		jp	z,reset_color_keys
 		ld	a,1
 		ld	(.firsttime),a
 		dec	a
@@ -2014,6 +2012,8 @@ levelhashbits
 prepare_info_screen
 		ld	a,C_BG_ATTR
 		call	cls
+		ld	a,C_BG_PAPER
+		out	(254),a
 
 		xor	a
 		ld	hl,info_text
@@ -2053,11 +2053,7 @@ mute_unmute	ld	a,(music_muted)
 		call	music_stop
 		ret
 
-setup_all	di
-		ld	a,C_BG_PAPER
-		out	(254),a
-
-		;prepare im2 table
+setup_all	;prepare im2 table
 		ld	hl,im2_vector
 		ld	de,im2_vector+1
 		ld	bc,256
