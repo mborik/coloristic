@@ -30,6 +30,7 @@ start:		di
 		call	prepare_info_screen
 		call	setup_all
 main_start	call	play
+		call	tick
 
 		ld	a,(level+1)
 		ld	(tmplevel+1),a
@@ -128,7 +129,8 @@ level_pgdown	ld	a,(level+1)
 		sub	8
 		jr	level_set
 
-level_set	ld	(level+1),a
+level_set	call	tick
+		ld	(level+1),a
 		call	highlight_level
 		ld	a,(level+1)
 		ld	e,a
@@ -137,13 +139,15 @@ level_set	ld	(level+1),a
 		jr	level_select
 		ret
 
-level_play	ld	a,(tmplevel+1)
+level_play	call	tick
+		ld	a,(tmplevel+1)
 		ld	e,a
 		ld	a,(level+1)
 		cp	e
 		jp	nz,main_start
 
-level_continue	ld	a,(tmplevel+1)
+level_continue	call	tick
+		ld	a,(tmplevel+1)
 		cp	-1
 		jp	z,main_start
 		ld	(level+1),a
@@ -291,7 +295,7 @@ mainloop	call	get_controls.entry
 		ret	z
 
 		cp	'r'		;reload
-		jp	z,start_level
+		jr	z,do_restart
 
 		cp	'1'
 		jr	c,mainloop_cont
@@ -310,19 +314,26 @@ mainloop	call	get_controls.entry
 		jr	mainloop_cont
 
 .setact		pop	af
+		ld	c,a
+		ld	a,(active_color)
+		cp	c
+		jr	z,mainloop_cont
+		call	tick
 		ld	(active_color),a
 		call	reset_color_keys
 
 mainloop_cont	call	key_delay
 		jr	mainloop
 
-manage_music	call	mute_unmute
+manage_music	call	tick
+		call	mute_unmute
 		jr	mainloop_cont
 
 perform_undo	call	undo
 		jr	mainloop_cont
 
-change_color	ld	a,(active_color)
+change_color	call	tick
+		ld	a,(active_color)
 		inc	a
 		and	3
 		ld	e,a
@@ -333,9 +344,18 @@ change_color	ld	a,(active_color)
 		call	findplayablecolor.findnext
 		jr	mainloop_cont
 
+do_restart	call	tick
+		call	tick
+		dec	a
+		jr	nz,do_restart
+		jp	start_level
+
 undo		ld	a,(undo_area+PLAYFIELD_SIZE-8)
 		or	a
 		ret	z
+		ld	b,9
+.tock		call	tick
+		djnz	.tock
 		ld	hl,undo_area
 		ld	de,playground
 		ld	bc,PLAYFIELD_SIZE*UNDO_LEVELS
@@ -614,6 +634,7 @@ perform_move	rlca
 		or	e	; color << 4
 .additional	or	0
 		ld	(hl),a
+		call	tick
 		call	finish_move
 .forbidden	call	key_delay
 		jp	mainloop
@@ -1248,7 +1269,8 @@ reset_color_keys
 
 ;;-----------------------------------------------------------------------------
 
-entercode	call	key_delay
+entercode	call	tick
+		call	key_delay
 		call	fadeout
 
 		ld	a,C_BG_PAPER*8 + C_BG_INK
@@ -1289,6 +1311,7 @@ entercode	call	key_delay
 		ld	(hl),a
 		inc	hl
 		ld	(hl),0
+		call	tick
 
 		push	hl
 		ld	hl,tmpcode
@@ -1331,7 +1354,8 @@ entercode	call	key_delay
 .nochg_max	ld	a,-1
 		jr	.set
 
-.end1		pop	bc
+.end1		call	tick
+		pop	bc
 		pop	hl
 .end		ld	a,(level+1)
 
@@ -1375,7 +1399,8 @@ level2text	inc	a
 		ld	(hl),0
 		ret
 
-next_level	ld	a,-1
+next_level	call	beeeep
+		ld	a,-1
 		ld	(tmplevel+1),a
 
 		ld	b,50
@@ -1849,6 +1874,37 @@ down2ch		ld	a,64
 		ld	d,a
 		ret
 
+tick		push	af
+		push	bc
+		ld	a,C_BG_PAPER
+		ld	b,16
+.loop		out	(254),a
+		xor	16
+		nop
+		nop
+		djnz	.loop
+		pop	bc
+		pop	af
+		ret
+
+beeeep		push	af
+		push	bc
+		ld	bc,0
+		ld	a,C_BG_PAPER
+.loop1:		push	bc
+.loop2:		out	(254),a
+		xor	16
+		dec	c
+		jr	nz,.loop2
+		pop	bc
+		xor	16
+		dec	c
+		dec	c
+		djnz	.loop1
+		pop	bc
+		pop	af
+		ret
+
 encode_level_code
 		ld	a,(level+1)
 		ld	ix,levelhash
@@ -2026,7 +2082,8 @@ prepare_info_screen
 		ldir
 		ret
 
-info_screen	ld	a,(level+1)
+info_screen	call	tick
+		ld	a,(level+1)
 		ld	(tmplevel+1),a
 
 		ld	a,7*8
@@ -2043,6 +2100,7 @@ info_screen	ld	a,(level+1)
 .wkey		call	get_key
 		or	a
 		jr	z,.wkey
+		call	tick
 		jp	play
 
 mute_unmute	ld	a,(music_muted)
