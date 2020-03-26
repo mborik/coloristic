@@ -319,6 +319,7 @@ mainloop	call	get_controls.entry
 		cp	c
 		jr	z,mainloop_cont
 		call	tick
+		ld	a,c
 		ld	(active_color),a
 		call	reset_color_keys
 
@@ -1897,7 +1898,6 @@ beeeep		push	af
 		dec	c
 		jr	nz,.loop2
 		pop	bc
-		xor	16
 		dec	c
 		dec	c
 		djnz	.loop1
