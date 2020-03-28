@@ -1,11 +1,43 @@
-		device	zxspectrum128
+		device	zxspectrum48
 
-		define OUTPUTFN "../coloristic.tap"
-		define SCREENFN "../screen/introscr.pak"
+	ifdef BUILDROM
+		include "xchg.inc"
 
+
+		org	#0000
+
+;; ROM bootstrap
+start:		di
+		ld	sp,#0000
+		xor	a
+		ld	hl,#5800
+		ld	de,#5801
+		ld	bc,#2FF
+		ld	(hl),a
+		ldir
+		out	(254),a
+		ld	a,#30
+		ld	bc,#7FFD
+		out	(c),a
+		ld	hl,bufdat.packed
+		ld	de,#4000
+		call	unpack
+		ld	bc,#8000
+		push	bc
+.wait		ei
+		halt
+		djnz	.wait
+		ret
+
+		ds	#0038-$
+
+		jp	im2_rut
+
+	else
 
 		org	#6000
 
+;; TAP mover and unpack
 start:		di
 		ld	hl,mover+(moverend-movereal)-1
 		ld	de,#FFFF
@@ -17,11 +49,19 @@ mover:
 	phase	#FFFF & (#10000-(moverend-movereal))
 
 @movereal
+	endif
+
+;;-----------------------------------------------------------------------------
 
 bufdat.packed:	incbin "coloristic.pak"
 
+
+	ifdef BUILDROM
+		org	unpack
+	else
 unpack:		ld	hl,bufdat.packed
 		ld	de,#6000
+	endif
 
 ;; Setting for depacker according to compression identification -tXYoAoB
 
@@ -46,6 +86,14 @@ spd	=	2
 
 		include "lzx.a80"
 
+;;-----------------------------------------------------------------------------
+	ifdef BUILDROM
+		savebin "../coloristic.rom",start,$-start
+	else
+
+		define OUTPUTFN "../coloristic.tap"
+		define SCREENFN "../screen/introscr.pak"
+
 @moverend = $
 
 	dephase
@@ -58,3 +106,4 @@ scrpack		incbin	SCREENFN
 
 		savebin "final.bin",start,realend-start
 		savetap OUTPUTFN,CODE,"coloris cd",start,realend-start
+	endif

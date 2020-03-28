@@ -1,9 +1,21 @@
-		device	zxspectrum128
+		device	zxspectrum48
 
+
+	ifdef BUILDROM
+unpack = #3FA9
+
+		org	#4000
+
+@ENTRY
+		incbin	"../screen/introscr.scr"
+	endif
 
 		org	#6000
 
+	ifndef BUILDROM
 @ENTRY
+	endif
+
 levels		incbin	"../levels/levels.bin"
 gameplan	incbin	"../gfx/plan.pak"
 
@@ -28,6 +40,9 @@ LEVEL_CNT	equ	80
 start:		di
 		ld	sp,start
 		call	prepare_info_screen
+	ifdef BUILDROM
+		call	music_init
+	endif
 		call	setup_all
 main_start	call	play
 		call	tick
@@ -2112,7 +2127,12 @@ mute_unmute	ld	a,(music_muted)
 		call	music_stop
 		ret
 
-setup_all	;prepare im2 table
+setup_all
+	ifdef BUILDROM
+		ld	hl,0
+		ld	(im2_rut),hl
+	else
+		;prepare im2 table
 		ld	hl,im2_vector
 		ld	de,im2_vector+1
 		ld	bc,256
@@ -2134,6 +2154,7 @@ setup_all	;prepare im2 table
 
 		;init music
 		call	music_init
+	endif
 
 		;detect kempston
 		ei
@@ -2158,7 +2179,13 @@ setup_all	;prepare im2 table
 		ld	(key_delay.havekempston+1),a
 		ret
 
-im2_rut		push	ix
+im2_rut
+	ifdef BUILDROM
+		ei
+		ret
+	endif
+
+		push	ix
 		push	iy
 		push	hl
 		push	de
@@ -2223,6 +2250,8 @@ winwin_screen	incbin	"../gfx/win.pak"
 
 
 		opt push listoff
+
+	ifndef BUILDROM
 ;;-----------------------------------------------------------------------------
 ;; Setting for depacker according to compression identification -tXYoAoB
 
@@ -2243,6 +2272,7 @@ spd	=	2
 ;;  2+ .. optimized for speed - but longer code
 
 unpack:		include "lzx.a80"
+	endif
 
 		include "music.a80"
 
@@ -2314,14 +2344,22 @@ playground	ds	PLAYFIELD_SIZE
 
 undo_area	ds	PLAYFIELD_SIZE * UNDO_LEVELS
 
+	ifndef BUILDROM
 		align	256
 
 im2_vector
 im2_target = 256 * (high $ + 1) + (high $ + 1)
+	endif
 
 
 precalcscr = #E800
 
 
 		savebin "coloristic.bin",ENTRY,TOTAL_LENGTH
+
+	ifdef BUILDROM
+		export	im2_rut
+		export	unpack
+	else
 		savesna "../coloristic.sna",start
+	endif

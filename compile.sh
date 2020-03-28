@@ -17,7 +17,13 @@ LZX plan.scr plan.pak
 LZX win.scr win.pak
 
 cd ../src
-${ASM} --nologo --lst coloristic.a80
-LZX coloristic.bin coloristic.pak
 
+# build ROM version
+${ASM} --nologo -DBUILDROM --exp=xchg.inc --lst=coloristic.rom.lst coloristic.a80
+LZX coloristic.bin coloristic.pak
+${ASM} --nologo -DBUILDROM --longptr --lst=final.rom.lst final.a80
+
+# build standard TAP version
+${ASM} --nologo --lst=coloristic.lst coloristic.a80
+LZX coloristic.bin coloristic.pak
 ${ASM} --nologo --longptr --lst=final.lst final.a80
