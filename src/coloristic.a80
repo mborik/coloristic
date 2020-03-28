@@ -585,8 +585,8 @@ perform_move	rlca
 		jr	nz,.forbidden
 		bit	4,e	; is wrapper?
 		jr	nz,.wrapper
-		bit	5,e	; is powerup?
-		jr	nz,.powerup
+		bit	5,e	; is powerup? then skip other tests...
+		jr	nz,.makemove
 		ld	a,#0C
 		and	e
 		cp	4	; is another start tile?
@@ -607,6 +607,8 @@ perform_move	rlca
 .makemove	ld	a,0	; nonzero when we storing undo
 		or	a
 		call	nz,store_undo
+		bit	5,e	; real powerup handling
+		call	nz,.powerup
 		ld	a,c
 		rlca
 		rlca
@@ -655,18 +657,6 @@ perform_move	rlca
 		and	3
 		cp	d	; direction
 		jr	nz,.forbidden
-		jr	.makemove
-
-.powerup	push	hl
-		ld	a,c	; color
-		add	a,low playground.steps
-		ld	l,a
-		ld	h,high playground.steps
-		ld	a,e	; follow-tile
-		and	7
-		add	a,(hl)	; add to steps
-		ld	(hl),a
-		pop	hl
 		jr	.makemove
 
 .wrapper	ld	a,e	; follow-tile
@@ -718,6 +708,18 @@ perform_move	rlca
 		ld	a,#40	; switched path additional flag
 		ld	(.additional+1),a
 		pop	bc
+		pop	hl
+		ret
+
+.powerup	push	hl
+		ld	a,c	; color
+		add	a,low playground.steps
+		ld	l,a
+		ld	h,high playground.steps
+		ld	a,e	; follow-tile
+		and	7
+		add	a,(hl)	; add to steps
+		ld	(hl),a
 		pop	hl
 		ret
 
@@ -1894,13 +1896,12 @@ beeeep		push	af
 		ld	a,C_BG_PAPER
 .loop1:		push	bc
 .loop2:		out	(254),a
-		xor	16
-		dec	c
-		jr	nz,.loop2
+		djnz	.loop2
 		pop	bc
+		xor	16
+		dec	b
 		dec	c
-		dec	c
-		djnz	.loop1
+		jr	nz,.loop1
 		pop	bc
 		pop	af
 		ret

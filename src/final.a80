@@ -1,5 +1,9 @@
 		device	zxspectrum128
 
+		define OUTPUTFN "../coloristic.tap"
+		define SCREENFN "../screen/introscr.pak"
+
+
 		org	#6000
 
 start:		di
@@ -45,5 +49,12 @@ spd	=	2
 @moverend = $
 
 	dephase
+@realend
 
-		savebin "final.bin",start,$-start
+		org	#C000
+
+scrpack		incbin	SCREENFN
+		savetap OUTPUTFN,CODE,"coloris sc",scrpack,$-scrpack,#8000,#8000
+
+		savebin "final.bin",start,realend-start
+		savetap OUTPUTFN,CODE,"coloris cd",start,realend-start
