@@ -8,7 +8,6 @@
 
 ### original iOS game, idea & level design:
 -   **Daniel [@Kraudi2k](https://twitter.com/Kraudi2k) Krautwurst**
-    | [coloristic-game.com](http://coloristic-game.com/)
 
 ### ZX-Spectrum version code, graphics & music:
 -   [Martin Bórik](https://demozoo.org/sceners/20529/)
